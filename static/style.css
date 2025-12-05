@@ -1,0 +1,686 @@
+:root {
+    --bg-color: #f0f4f8;
+    --primary-color: #4a90e2;
+    --primary-hover: #357abd;
+    --accent-color: #ff6b6b;
+    --text-color: #333;
+    --card-bg: #ffffff;
+    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --card-hover-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    --font-main: 'Noto Sans JP', sans-serif;
+    --font-rounded: 'M PLUS Rounded 1c', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Screen Management */
+.screen {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    height: 100%;
+    animation: fadeIn 0.3s ease;
+}
+
+.screen.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+}
+
+h1 {
+    font-family: var(--font-rounded);
+    font-weight: 800;
+    color: var(--primary-color);
+    font-size: 1.8rem;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Lobby Styles */
+.lobby-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 20px 0;
+}
+
+.lobby-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.action-box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    text-align: center;
+}
+
+.action-box h3 {
+    margin-bottom: 15px;
+    color: var(--text-color);
+    font-family: var(--font-rounded);
+}
+
+.divider {
+    text-align: center;
+    color: #999;
+    font-size: 0.9rem;
+    position: relative;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #ddd;
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.join-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* Waiting Screen Styles */
+.waiting-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+    padding: 20px 0;
+}
+
+.room-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    width: 100%;
+}
+
+.room-code-display {
+    font-family: var(--font-rounded);
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    letter-spacing: 5px;
+}
+
+.icon-btn {
+    background: none;
+    font-size: 1.2rem;
+    padding: 5px;
+    color: #666;
+}
+
+.players-list-container {
+    width: 100%;
+}
+
+.players-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.player-item {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.player-item.is-me {
+    border: 2px solid var(--primary-color);
+    background: #f0f7ff;
+}
+
+.player-name {
+    font-weight: bold;
+}
+
+.player-status {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.waiting-actions {
+    margin-top: 20px;
+    text-align: center;
+    width: 100%;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Game Styles */
+.game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+}
+
+.opponents-area {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    min-height: 60px;
+}
+
+.opponent-card {
+    background: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 0.8rem;
+}
+
+.opponent-card .count {
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.current-word-container {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.current-word-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+}
+
+.label {
+    font-size: 0.8rem;
+    color: #888;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.word-display {
+    font-family: var(--font-rounded);
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-color);
+    margin: 10px 0;
+}
+
+.next-char-hint {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+#target-char {
+    font-size: 1.4rem;
+    color: var(--accent-color);
+}
+
+.status-panel {
+    display: flex;
+    justify-content: space-around;
+    background: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.status-item .value {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.play-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-family: var(--font-rounded);
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary-color);
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-rounded);
+    font-weight: bold;
+    transition: transform 0.1s, opacity 0.2s;
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+.primary-btn {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0 25px;
+    font-size: 1.1rem;
+}
+
+.primary-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.secondary-btn {
+    background-color: #eee;
+    color: #555;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+.secondary-btn:hover {
+    background-color: #ddd;
+}
+
+.message {
+    min-height: 20px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.message.error {
+    color: var(--accent-color);
+}
+
+.message.success {
+    color: #2ecc71;
+}
+
+.hand-container {
+    margin-top: 10px;
+}
+
+.hand-label {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.hand {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    justify-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hand.two-rows {
+    grid-auto-flow: row;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 15px 5px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 70px;
+    height: 93.33px;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--card-hover-shadow);
+}
+
+.card.selected {
+    border-color: var(--primary-color);
+    background-color: #eef6ff;
+    transform: translateY(-8px);
+}
+
+.card.auto-selected {
+    border-color: #2ecc71;
+    background-color: #e8f8f0;
+    transform: translateY(-8px);
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+}
+
+.card-value {
+    font-family: var(--font-rounded);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-color);
+}
+
+.card-type {
+    font-size: 0.6rem;
+    color: #999;
+    margin-top: 5px;
+}
+
+/* Hamburger Menu Button */
+.menu-btn {
+    background: transparent;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 30px;
+    height: 30px;
+    justify-content: center;
+}
+
+.menu-btn span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+.menu-btn:hover span {
+    background-color: var(--primary-hover);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 2px solid #eee;
+}
+
+.modal-header h2 {
+    font-family: var(--font-rounded);
+    color: var(--primary-color);
+    font-size: 1.5rem;
+}
+
+.close-btn {
+    background: transparent;
+    font-size: 2rem;
+    color: #999;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body h3 {
+    font-family: var(--font-rounded);
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.settings-description {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* Priority List */
+.priority-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.priority-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.2s;
+    cursor: move;
+    user-select: none;
+}
+
+.priority-item:hover {
+    background: #f0f4f8;
+    border-color: var(--primary-color);
+}
+
+.priority-item.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.priority-number {
+    font-family: var(--font-rounded);
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    min-width: 30px;
+    text-align: center;
+}
+
+.priority-label {
+    flex: 1;
+    font-weight: 600;
+}
+
+.drag-handle {
+    font-size: 1.5rem;
+    color: #999;
+    cursor: grab;
+    padding: 0 5px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Auto-select toggle */
+.auto-select-toggle {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+.auto-select-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.auto-select-toggle input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .word-display {
+        font-size: 2rem;
+    }
+
+    .hand {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .header-buttons {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .secondary-btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}

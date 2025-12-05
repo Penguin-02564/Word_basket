@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Basket Online</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;800&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen active">
+            <header>
+                <h1>Word Basket Online</h1>
+            </header>
+            <div class="lobby-content">
+                <div class="input-group">
+                    <label>プレイヤー名</label>
+                    <input type="text" id="player-name-input" placeholder="名前を入力" maxlength="10">
+                </div>
+
+                <div class="lobby-actions">
+                    <div class="action-box">
+                        <h3>ルームを作成</h3>
+                        <button id="create-room-btn" class="primary-btn">新規ルーム作成</button>
+                    </div>
+
+                    <div class="divider">または</div>
+
+                    <div class="action-box">
+                        <h3>ルームに参加</h3>
+                        <div class="join-input-group">
+                            <input type="text" id="room-code-input" placeholder="ルームコード (4桁)" maxlength="4">
+                            <button id="join-room-btn" class="secondary-btn">参加</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Screen -->
+        <div id="waiting-screen" class="screen">
+            <header>
+                <h1>待機中...</h1>
+            </header>
+            <div class="waiting-content">
+                <div class="room-info">
+                    <span class="label">ルームコード</span>
+                    <div class="room-code-display" id="display-room-code">----</div>
+                    <button id="copy-code-btn" class="icon-btn">📋</button>
+                </div>
+
+                <div class="players-list-container">
+                    <h3>参加者リスト</h3>
+                    <ul id="players-list" class="players-list">
+                        <!-- Players will be added here -->
+                    </ul>
+                </div>
+
+                <div class="waiting-actions">
+                    <button id="start-game-btn" class="primary-btn hidden">ゲーム開始</button>
+                    <p id="waiting-message" class="message">ホストがゲームを開始するのを待っています...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <header>
+                <h1>Word Basket</h1>
+                <div class="header-buttons">
+                    <button id="reroll-btn" class="secondary-btn">🔄 リロール</button>
+                    <button id="menu-btn" class="menu-btn">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="game-info">
+                <!-- Opponents Area -->
+                <div id="opponents-area" class="opponents-area">
+                    <!-- Opponents info will be here -->
+                </div>
+
+                <div class="current-word-container">
+                    <span class="label">現在の単語</span>
+                    <div class="word-display" id="current-word">---</div>
+                    <div class="next-char-hint">次は <span id="target-char">?</span> から！</div>
+                </div>
+
+                <div class="status-panel">
+                    <div class="status-item">
+                        <span class="label">残り山札</span>
+                        <span class="value" id="deck-count">--</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">自分の手札</span>
+                        <span class="value" id="hand-count">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="play-area">
+                <div class="input-group">
+                    <input type="text" id="word-input" placeholder="単語を入力 (ひらがな)" autocomplete="off">
+                    <button id="submit-btn" class="primary-btn">決定</button>
+                </div>
+                <div id="message-area" class="message"></div>
+            </div>
+
+            <div class="hand-container">
+                <div class="hand-label" id="hand-label">手札を選んでください</div>
+                <div id="hand" class="hand">
+                    <!-- Cards will be rendered here -->
+                </div>
+            </div>
+        </div>
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen">
+            <header>
+                <h1>ゲーム終了！</h1>
+            </header>
+            <div class="result-content">
+                <div class="result-list-container">
+                    <h3>順位発表</h3>
+                    <ul id="result-list" class="result-list">
+                        <!-- Results will be added here -->
+                    </ul>
+                </div>
+                <div class="result-actions">
+                    <button id="back-to-lobby-btn" class="primary-btn">ロビーに戻る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>設定</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>自動選択の優先順位</h3>
+                    <p class="settings-description">ドラッグ＆ドロップで並び替えてください</p>
+                    <div class="priority-list" id="priority-list">
+                        <div class="priority-item" data-type="char">
+                            <span class="drag-handle">☰</span>
+                            <span class="priority-number">1</span>
+                            <span class="priority-label">文字カード (あ, か...)</span>
+                        </div>
+                        <div class="priority-item" data-type="row">
+                            <span class="drag-handle">☰</span>
+                            <span class="priority-number">2</span>
+                            <span class="priority-label">行カード (あ行, か行...)</span>
+                        </div>
+                        <div class="priority-item" data-type="length">
+                            <span class="drag-handle">☰</span>
+                            <span class="priority-number">3</span>
+                            <span class="priority-label">文字数カード (3文字...)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>その他</h3>
+                    <div class="auto-select-toggle">
+                        <label>
+                            <input type="checkbox" id="auto-select-toggle">
+                            入力時にカードを自動選択する
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

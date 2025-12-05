@@ -1,0 +1,236 @@
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from game import WordBasketGame, GameManager
+import os
+import json
+import uuid
+from typing import Dict, List
+
+app = FastAPI()
+
+# Allow CORS for development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Game Manager instance
+game_manager = GameManager()
+
+class ConnectionManager:
+    def __init__(self):
+        # room_code -> {player_id -> WebSocket}
+        self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, room_code: str, player_id: str):
+        await websocket.accept()
+        if room_code not in self.active_connections:
+            self.active_connections[room_code] = {}
+        self.active_connections[room_code][player_id] = websocket
+
+    def disconnect(self, room_code: str, player_id: str):
+        if room_code in self.active_connections:
+            if player_id in self.active_connections[room_code]:
+                del self.active_connections[room_code][player_id]
+            if not self.active_connections[room_code]:
+                del self.active_connections[room_code]
+
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        await websocket.send_json(message)
+
+    async def broadcast(self, message: dict, room_code: str):
+        if room_code in self.active_connections:
+            for connection in self.active_connections[room_code].values():
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    # Handle potential broken pipe
+                    pass
+
+manager = ConnectionManager()
+
+# API Models
+class CreateRoomResponse(BaseModel):
+    room_code: str
+
+@app.post("/api/rooms")
+def create_room():
+    room_code = game_manager.create_room()
+    return {"room_code": room_code}
+
+@app.websocket("/ws/{room_code}/{player_name}")
+async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: str, player_id: str = None):
+    # Check if room exists
+    game = game_manager.get_room(room_code)
+    if not game:
+        await websocket.close(code=4000, reason="Room not found")
+        return
+
+    # Handle player_id logic
+    is_reconnect = False
+    if player_id and player_id in game.players:
+        # Reconnection
+        player = game.players[player_id]
+        is_reconnect = True
+    else:
+        # New player
+        player_id = str(uuid.uuid4())
+        player = game.add_player(player_id, player_name)
+    
+    # Join room (ConnectionManager handles overwriting existing connection if any)
+    await manager.connect(websocket, room_code, player_id)
+    
+    try:
+        # Broadcast room update
+        msg = f"{player.name}さんが再接続しました" if is_reconnect else f"{player.name}さんが参加しました"
+        await broadcast_game_state(game, room_code, message=msg)
+        
+        while True:
+            data = await websocket.receive_json()
+            action = data.get("action")
+            
+            if action == "start_game":
+                if player.is_host:
+                    game.start_game()
+                    await broadcast_game_state(game, room_code, message=f"{player.name}さんがゲームを開始しました！")
+                else:
+                    await manager.send_personal_message({"type": "error", "message": "ホストのみがゲームを開始できます"}, websocket)
+            
+            elif action == "play_word":
+                word = data.get("word")
+                card_index = data.get("card_index")
+                
+                # Auto-select logic if needed (can be implemented on client or server)
+                if card_index == -1:
+                    card_index = game.auto_select_card(player_id, word)
+                    if card_index is None:
+                        await manager.send_personal_message({"type": "error", "message": "この単語に使えるカードがありません"}, websocket)
+                        continue
+
+                result = game.check_move(player_id, word, card_index)
+                
+                if result["valid"]:
+                    msg = f"{player.name}さんが「{word}」を出しました！"
+                    if result.get("game_over"):
+                        msg = f"{player.name}さんがクリアしました！勝者: {player.name}"
+                        await broadcast_game_state(game, room_code, message=msg, game_over=True, winner=player.name, ranks=result.get("ranks", []))
+                    else:
+                        await broadcast_game_state(game, room_code, message=msg)
+                else:
+                    await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
+            elif action == "reroll":
+                result = game.reroll(player_id)
+                if result["success"]:
+                    await broadcast_game_state(game, room_code, message=f"{player.name}さんがリロールしました")
+                else:
+                    await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
+            elif action == "set_priority":
+                priority = data.get("priority")
+                game.set_card_priority(player_id, priority)
+                # No broadcast needed, just personal update maybe?
+                await broadcast_game_state(game, room_code) # Update to reflect priority if we send it back
+
+    except WebSocketDisconnect:
+        manager.disconnect(room_code, player_id)
+        
+        if player.is_host:
+            # Host disconnected, end the game for everyone
+            await manager.broadcast({
+                "type": "return_to_title",
+                "message": "ホストが切断しました。タイトルに戻ります。"
+            }, room_code)
+            # Optionally clean up the room immediately or let it be
+            # For now, we just notify everyone.
+        else:
+            # Normal player disconnected
+            await broadcast_game_state(game, room_code, message=f"{player.name}さんが切断しました")
+
+async def broadcast_game_state(game: WordBasketGame, room_code: str, message: str = None, game_over: bool = False, winner: str = None, ranks: list = None):
+    # Construct state for each player
+    # We need to send personalized state (own hand) + public state (others' hand counts)
+    
+    common_state = {
+        "type": "game_state",
+        "room_code": room_code,
+        "status": game.status,
+        "current_word": game.current_word,
+        "target_char": game.get_target_char(),
+        "deck_count": len(game.deck),
+        "dictionary_size": len(game.dictionary),
+        "message": message,
+        "game_over": game_over,
+        "game_over": game_over,
+        "winner": winner,
+        "ranks": ranks or []
+    }
+    
+    # Players info (public)
+    players_info = []
+    active_players = manager.active_connections.get(room_code, {})
+    
+    for p in game.players.values():
+        p_dict = p.to_dict()
+        p_dict["is_connected"] = p.player_id in active_players
+        players_info.append(p_dict)
+    common_state["players_info"] = players_info
+
+    if room_code in manager.active_connections:
+        for player_id, ws in manager.active_connections[room_code].items():
+            player = game.players.get(player_id)
+            if player:
+                # Personal state
+                personal_state = common_state.copy()
+                personal_state["my_hand"] = [c.to_dict() for c in player.hand]
+                personal_state["my_player_id"] = player_id
+                personal_state["is_host"] = player.is_host
+                personal_state["my_priority"] = player.card_priority
+                
+                try:
+                    await ws.send_json(personal_state)
+                except Exception:
+                    pass
+
+# Get the directory of the current file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# Serve static files
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    import socket
+    
+    def get_local_ip():
+        try:
+            # Connect to an external server (doesn't actually send data) to get the local IP used for routing
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
+
+    local_ip = get_local_ip()
+    print("="*50)
+    print(f"Server starting...")
+    print(f"Local Access: http://localhost:8000")
+    print(f"Network Access: http://{local_ip}:8000")
+    print("="*50)
+    
+    # Use string reference for app to avoid some pickling issues on Windows if reload is used (though not used here)
+    # But passing app instance is fine for simple usage.
+    try:
+        port = int(os.environ.get("PORT", 8000))
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    except OSError as e:
+        print(f"Error starting server: {e}")
+        print("Port 8000 might be in use. Please stop other python processes.")
