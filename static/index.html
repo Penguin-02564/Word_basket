@@ -125,6 +125,22 @@
                     <!-- Cards will be rendered here -->
                 </div>
             </div>
+
+            <!-- Voting Modal -->
+            <div id="voting-modal" class="voting-modal hidden">
+                <div class="voting-overlay"></div>
+                <div class="voting-content">
+                    <div class="voting-word-display">
+                        <span id="voting-word"></span>
+                    </div>
+                    <div class="voting-message">この上がりを認めますか？</div>
+                    <div class="voting-buttons">
+                        <button id="vote-approve-btn" class="vote-btn vote-approve">承諾</button>
+                        <button id="vote-reject-btn" class="vote-btn vote-reject">拒否</button>
+                    </div>
+                    <div class="voting-status" id="voting-status"></div>
+                </div>
+            </div>
         </div>
         <!-- Result Screen -->
         <div id="result-screen" class="screen">

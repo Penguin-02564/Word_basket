@@ -32,6 +32,13 @@ const els = {
     opposeBtn: document.getElementById('oppose-btn'),
     approveBtn: document.getElementById('approve-btn'),
     menuBtn: document.getElementById('menu-btn'),
+
+    // Voting Modal
+    votingModal: document.getElementById('voting-modal'),
+    votingWord: document.getElementById('voting-word'),
+    votingStatus: document.getElementById('voting-status'),
+    voteApproveBtn: document.getElementById('vote-approve-btn'),
+    voteRejectBtn: document.getElementById('vote-reject-btn'),
     opponentsArea: document.getElementById('opponents-area'),
 
     // Modal
@@ -88,6 +95,8 @@ function setupEventListeners() {
     els.rerollBtn.addEventListener('click', sendReroll);
     els.opposeBtn.addEventListener('click', sendOppose);
     els.approveBtn.addEventListener('click', sendApprove);
+    els.voteApproveBtn.addEventListener('click', sendApprove);
+    els.voteRejectBtn.addEventListener('click', sendOppose);
 
     // Result
     els.backToLobbyBtn.addEventListener('click', () => {
@@ -348,21 +357,23 @@ function updateGameState(data) {
             els.opposeBtn.classList.add('hidden');
         }
 
-        // Approve button: only show during finishing_check
+        // Voting Modal: show during finishing_check
         if (data.status === 'finishing_check') {
-            els.approveBtn.classList.remove('hidden');
-            els.wordInput.disabled = true;
-            els.submitBtn.disabled = true;
+            els.votingModal.classList.remove('hidden');
+            els.votingWord.textContent = data.current_word;
 
-            // Show vote counts
             const approvals = data.approval_votes || 0;
             const rejections = data.opposition_votes || 0;
             const totalPlayers = data.active_players || 0;
-            const finishingPlayers = totalPlayers - 1; // Excluding finishing player
+            const finishingPlayers = totalPlayers - 1;
 
-            els.wordInput.placeholder = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
+            els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
+
+            // Disable word input
+            els.wordInput.disabled = true;
+            els.submitBtn.disabled = true;
         } else {
-            els.approveBtn.classList.add('hidden');
+            els.votingModal.classList.add('hidden');
         }
 
         if (data.game_over) {
