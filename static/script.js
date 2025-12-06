@@ -398,6 +398,9 @@ function updateGameState(data) {
         }
 
         if (data.game_over) {
+            // Hide voting modal when game is over
+            els.votingModal.classList.add('hidden');
+
             renderResultScreen(data.ranks);
             showScreen('result-screen');
 
