@@ -251,6 +251,7 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
                 personal_state["my_player_id"] = player_id
                 personal_state["is_host"] = player.is_host
                 personal_state["my_priority"] = player.card_priority
+                personal_state["has_voted"] = player_id in game.approval_votes or player_id in game.opposition_votes
                 
                 try:
                     await ws.send_json(personal_state)

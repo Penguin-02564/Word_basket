@@ -376,22 +376,38 @@ function updateGameState(data) {
             els.opposeBtn.classList.add('hidden');
         }
 
-        // Voting Modal: show during finishing_check
+        // Voting Modal: show during finishing_check (but not for the player who finished)
         if (data.status === 'finishing_check') {
-            console.log('Showing voting modal for finishing_check');
-            els.votingModal.classList.remove('hidden');
-            els.votingWord.textContent = data.current_word;
+            const myPlayer = data.players_info.find(p => p.player_id === state.playerId);
+            const hasVoted = data.has_voted || false;
 
-            const approvals = data.approval_votes || 0;
-            const rejections = data.opposition_votes || 0;
-            const totalPlayers = data.active_players || 0;
-            const finishingPlayers = totalPlayers - 1;
+            // Only show modal if this player hasn't finished yet AND hasn't voted
+            if (myPlayer && !myPlayer.rank && !hasVoted) {
+                console.log('Showing voting modal for finishing_check');
+                els.votingModal.classList.remove('hidden');
+                els.votingWord.textContent = data.current_word;
 
-            els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
+                const approvals = data.approval_votes || 0;
+                const rejections = data.opposition_votes || 0;
+                const totalPlayers = data.active_players || 0;
+                const finishingPlayers = totalPlayers - 1;
 
-            // Disable word input
-            els.wordInput.disabled = true;
-            els.submitBtn.disabled = true;
+                els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
+
+                // Disable word input
+                els.wordInput.disabled = true;
+                els.submitBtn.disabled = true;
+            } else {
+                console.log('Hiding voting modal - player has finished or voted');
+                els.votingModal.classList.add('hidden');
+
+                // Show waiting message for finishing player or voted player
+                if ((myPlayer && myPlayer.rank) || hasVoted) {
+                    els.wordInput.disabled = true;
+                    els.submitBtn.disabled = true;
+                    els.wordInput.placeholder = "他のプレイヤーの投票を待っています...";
+                }
+            }
         } else {
             console.log('Hiding voting modal, status:', data.status);
             els.votingModal.classList.add('hidden');
