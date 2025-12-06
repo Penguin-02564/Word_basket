@@ -168,15 +168,56 @@ class WordBasketGame:
         }
         return mapping.get(char, char)
 
+    def get_vowel(self, char: str) -> str:
+        """Get the vowel sound of a hiragana character."""
+        # Vowel mapping: hiragana -> vowel hiragana
+        vowel_map = {
+            # あ行
+            'あ': 'あ', 'い': 'い', 'う': 'う', 'え': 'え', 'お': 'お',
+            # か行
+            'か': 'あ', 'き': 'い', 'く': 'う', 'け': 'え', 'こ': 'お',
+            'が': 'あ', 'ぎ': 'い', 'ぐ': 'う', 'げ': 'え', 'ご': 'お',
+            # さ行
+            'さ': 'あ', 'し': 'い', 'す': 'う', 'せ': 'え', 'そ': 'お',
+            'ざ': 'あ', 'じ': 'い', 'ず': 'う', 'ぜ': 'え', 'ぞ': 'お',
+            # た行
+            'た': 'あ', 'ち': 'い', 'つ': 'う', 'て': 'え', 'と': 'お',
+            'だ': 'あ', 'ぢ': 'い', 'づ': 'う', 'で': 'え', 'ど': 'お',
+            # な行
+            'な': 'あ', 'に': 'い', 'ぬ': 'う', 'ね': 'え', 'の': 'お',
+            # は行
+            'は': 'あ', 'ひ': 'い', 'ふ': 'う', 'へ': 'え', 'ほ': 'お',
+            'ば': 'あ', 'び': 'い', 'ぶ': 'う', 'べ': 'え', 'ぼ': 'お',
+            'ぱ': 'あ', 'ぴ': 'い', 'ぷ': 'う', 'ぺ': 'え', 'ぽ': 'お',
+            # ま行
+            'ま': 'あ', 'み': 'い', 'む': 'う', 'め': 'え', 'も': 'お',
+            # や行
+            'や': 'あ', 'ゆ': 'う', 'よ': 'お',
+            # ら行
+            'ら': 'あ', 'り': 'い', 'る': 'う', 'れ': 'え', 'ろ': 'お',
+            # わ行
+            'わ': 'あ', 'を': 'お',
+            # ん
+            'ん': 'ん',
+            # Small kana
+            'ゃ': 'あ', 'ゅ': 'う', 'ょ': 'お',
+            'ぁ': 'あ', 'ぃ': 'い', 'ぅ': 'う', 'ぇ': 'え', 'ぉ': 'お',
+        }
+        return vowel_map.get(char, char)
+
     def get_target_char(self):
         if not self.current_word:
             return ""
         
         last_char = self.current_word[-1]
         if last_char == "ー" and len(self.current_word) > 1:
-            last_char = self.current_word[-2]
+            # Get the character before the long vowel mark
+            prev_char = self.current_word[-2]
+            # Return the vowel of that character
+            return self.get_vowel(prev_char)
         
         return last_char
+
 
     def check_move(self, player_id: str, word: str, card_index: int) -> dict:
         if self.status != "playing":
@@ -243,15 +284,23 @@ class WordBasketGame:
 
 
         if valid_card:
-            # Save state for potential revert if this is a finishing move
-            # actually we might want to save it for ANY move if we wanted to allow undo, 
-            # but requirement is specifically for "Oppose" on finishing move.
+            # Clear any previous opposition votes when a new move is made
+            self.opposition_votes = set()
             
+            # Save state for potential revert (for ANY move, not just finishing)
             previous_word = self.current_word
             played_card = player.hand[card_index]
             
             player.hand.pop(card_index)
             self.current_word = word
+            
+            # Store revert state
+            self.pending_revert_state = {
+                "player_id": player_id,
+                "previous_word": previous_word,
+                "played_card": played_card,
+                "was_finishing": len(player.hand) == 0 # After popping
+            }
             
             message = "OK"
             game_over = False
@@ -261,16 +310,8 @@ class WordBasketGame:
             if len(player.hand) == 0:
                 # Player finished - Enter Finishing Check
                 self.status = "finishing_check"
-                self.opposition_votes = set()
-                self.pending_revert_state = {
-                    "player_id": player_id,
-                    "previous_word": previous_word,
-                    "played_card": played_card,
-                    "previous_rank": player.rank # Should be None
-                }
-                
                 waiting_for_finish = True
-                message = f"{player.name}さんが上がりました！反対があれば投票してください。"
+                message = f"{player.name}さんが上がりました！拒否があれば投票してください。"
                 
                 # We do NOT add to finished_players yet.
                 # We wait for confirm_finish()
@@ -287,8 +328,12 @@ class WordBasketGame:
         return {"valid": False, "message": "不明なエラー"}
 
     def oppose_move(self, voter_id: str) -> dict:
-        if self.status != "finishing_check":
-            return {"success": False, "message": "反対投票できるタイミングではありません"}
+        # Can oppose at any time during "playing" or "finishing_check"
+        if self.status not in ["playing", "finishing_check"]:
+            return {"success": False, "message": "拒否投票できるタイミングではありません"}
+        
+        if not self.pending_revert_state:
+            return {"success": False, "message": "拒否できる手がありません"}
         
         if voter_id in self.opposition_votes:
             return {"success": False, "message": "既に投票済みです"}
@@ -296,15 +341,13 @@ class WordBasketGame:
         self.opposition_votes.add(voter_id)
         
         # Check majority
-        # Active players = total players - finished players (who are already out/safe?)
-        # Actually, everyone in the room should probably be able to vote? 
-        # "过半数のプレイヤー" (Majority of players). Let's assume all players currently in game.
         active_player_count = len(self.players)
         if len(self.opposition_votes) > active_player_count / 2:
+            was_finishing = self.pending_revert_state.get("was_finishing", False)
             self.revert_last_move()
-            return {"success": True, "reverted": True, "message": "反対多数により却下されました！"}
+            return {"success": True, "reverted": True, "message": "拒否多数により却下されました！"}
             
-        return {"success": True, "reverted": False, "message": "反対票を受け付けました"}
+        return {"success": True, "reverted": False, "message": "拒否票を受け付けました"}
 
     def revert_last_move(self):
         if not self.pending_revert_state:
@@ -315,11 +358,13 @@ class WordBasketGame:
         
         if player:
             player.hand.append(state["played_card"])
-            # Reset rank just in case (though we didn't set it yet)
-            player.rank = state["previous_rank"]
             
         self.current_word = state["previous_word"]
-        self.status = "playing"
+        
+        # If it was a finishing move, restore status to playing
+        if state.get("was_finishing"):
+            self.status = "playing"
+        
         self.pending_revert_state = None
         self.opposition_votes = set()
 

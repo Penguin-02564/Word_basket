@@ -56,7 +56,8 @@ let state = {
     selectedCardIndex: -1,
     autoSelect: false,
     cardPriority: ['char', 'row', 'length'],
-    reconnectTimer: null
+    reconnectTimer: null,
+    finishingCountdown: null // Timer for countdown display
 };
 
 // --- Initialization ---
@@ -251,7 +252,7 @@ function sendReroll() {
 }
 
 function sendOppose() {
-    if (confirm("この上がりに反対しますか？")) {
+    if (confirm("この手を拒否しますか？")) {
         state.ws.send(JSON.stringify({ action: "oppose" }));
     }
 }
@@ -332,16 +333,41 @@ function updateGameState(data) {
             els.wordInput.placeholder = "単語を入力 (ひらがな)";
         }
 
-        // Finishing Check State
-        if (data.status === 'finishing_check') {
+        // Reject button: always show during playing or finishing_check
+        if (data.status === 'playing' || data.status === 'finishing_check') {
             els.opposeBtn.classList.remove('hidden');
-            els.wordInput.disabled = true;
-            els.submitBtn.disabled = true;
-            if (!data.message) { // If no specific message, show default
-                showMessage("上がり確認中... 反対があれば投票してください", false);
-            }
         } else {
             els.opposeBtn.classList.add('hidden');
+        }
+
+        // Finishing Check State - Add countdown
+        if (data.status === 'finishing_check') {
+            els.wordInput.disabled = true;
+            els.submitBtn.disabled = true;
+
+            // Start countdown display
+            let countdown = 5;
+            els.wordInput.placeholder = `上がり確認中... ${countdown}秒`;
+
+            if (state.finishingCountdown) {
+                clearInterval(state.finishingCountdown);
+            }
+
+            state.finishingCountdown = setInterval(() => {
+                countdown--;
+                if (countdown >= 0) {
+                    els.wordInput.placeholder = `上がり確認中... ${countdown}秒`;
+                } else {
+                    clearInterval(state.finishingCountdown);
+                    state.finishingCountdown = null;
+                }
+            }, 1000);
+        } else {
+            // Clear countdown if not in finishing_check
+            if (state.finishingCountdown) {
+                clearInterval(state.finishingCountdown);
+                state.finishingCountdown = null;
+            }
         }
 
         if (data.game_over) {

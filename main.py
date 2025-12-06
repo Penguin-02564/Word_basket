@@ -6,7 +6,6 @@ from game import WordBasketGame, GameManager
 import os
 import json
 import uuid
-import asyncio
 from typing import Dict, List
 
 app = FastAPI()
@@ -117,32 +116,7 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                 
                 if result["valid"]:
                     msg = f"{player.name}さんが「{word}」を出しました！"
-                    
-                    if result.get("waiting_for_finish"):
-                        # Broadcast "Finishing Check" state
-                        await broadcast_game_state(game, room_code, message=msg)
-                        
-                        # Wait 5 seconds for opposition
-                        await asyncio.sleep(5)
-                        
-                        # Check if still in finishing_check (might have been reverted)
-                        finish_result = game.confirm_finish()
-                        if finish_result:
-                            # Game finished (or player finished and game continues)
-                            msg = f"{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
-                            if finish_result['game_over']:
-                                msg += f" 勝者: {finish_result['winner']}"
-                            
-                            await broadcast_game_state(
-                                game, 
-                                room_code, 
-                                message=msg, 
-                                game_over=finish_result['game_over'], 
-                                winner=finish_result['winner'], 
-                                ranks=finish_result['ranks']
-                            )
-                    elif result.get("game_over"):
-                        # Should not happen with new logic, but keep for safety
+                    if result.get("game_over"):
                         msg = f"{player.name}さんがクリアしました！勝者: {player.name}"
                         await broadcast_game_state(game, room_code, message=msg, game_over=True, winner=player.name, ranks=result.get("ranks", []))
                     else:
@@ -151,30 +125,12 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                     await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
             
             elif action == "reroll":
-                # Now acts as "exchange_hand"
-                card_index = data.get("card_index")
-                if card_index is None or card_index == -1:
-                     # If client didn't send index (old client?), try to use auto-select or fail
-                     # But UI should enforce it.
-                     await manager.send_personal_message({"type": "error", "message": "交換するカードを選択してください"}, websocket)
-                     continue
-
-                result = game.exchange_hand(player_id, card_index)
+                result = game.reroll(player_id)
                 if result["success"]:
-                    await broadcast_game_state(game, room_code, message=f"{player.name}さんが手札を交換しました")
+                    await broadcast_game_state(game, room_code, message=f"{player.name}さんがリロールしました")
                 else:
                     await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
             
-            elif action == "oppose":
-                result = game.oppose_move(player_id)
-                if result["success"]:
-                    msg = result["message"]
-                    if result.get("reverted"):
-                        msg = "反対多数により、前の手が却下されました！"
-                    await broadcast_game_state(game, room_code, message=msg)
-                else:
-                    await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
-
             elif action == "set_priority":
                 priority = data.get("priority")
                 game.set_card_priority(player_id, priority)
@@ -209,12 +165,10 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
         "deck_count": len(game.deck),
         "dictionary_size": len(game.dictionary),
         "message": message,
-        "message": message,
+        "game_over": game_over,
         "game_over": game_over,
         "winner": winner,
-        "ranks": ranks or [],
-        "opposition_votes": len(game.opposition_votes),
-        "active_players": len(game.players) # Approximate, for calculating majority
+        "ranks": ranks or []
     }
     
     # Players info (public)
