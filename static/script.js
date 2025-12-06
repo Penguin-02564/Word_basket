@@ -382,8 +382,8 @@ function updateGameState(data) {
             const hasVoted = data.has_voted || false;
             const isFinishingPlayer = data.finishing_player_id === state.playerId;
 
-            // Only show modal if: not the finishing player AND hasn't voted yet
-            if (myPlayer && !isFinishingPlayer && !hasVoted) {
+            // Only show modal if: not the finishing player AND hasn't finished yet AND hasn't voted yet
+            if (myPlayer && !isFinishingPlayer && !myPlayer.rank && !hasVoted) {
                 console.log('Showing voting modal for finishing_check');
                 els.votingModal.classList.remove('hidden');
                 els.votingWord.textContent = data.current_word;

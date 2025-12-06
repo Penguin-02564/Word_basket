@@ -120,6 +120,9 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                     if result.get("waiting_for_finish"):
                         # Broadcast "Finishing Check" state - wait for approval/rejection
                         await broadcast_game_state(game, room_code, message=msg)
+                        
+                        # Start 10-second timeout
+                        asyncio.create_task(voting_timeout(game, room_code, 10))
                     elif result.get("game_over"):
                         # Should not happen with new logic, but keep for safety
                         msg = f"{player.name}さんがクリアしました！勝者: {player.name}"
@@ -208,6 +211,65 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
         else:
             # Normal player disconnected
             await broadcast_game_state(game, room_code, message=f"{player.name}さんが切断しました")
+
+async def voting_timeout(game: WordBasketGame, room_code: str, timeout_seconds: int):
+    """Wait for timeout and force voting decision if still in finishing_check."""
+    await asyncio.sleep(timeout_seconds)
+    
+    # Check if still in finishing_check (voting might have already completed)
+    if game.status == "finishing_check":
+        # Force decision based on current votes
+        finishing_player_id = game.pending_revert_state.get("player_id") if game.pending_revert_state else None
+        active_players = [pid for pid in game.players.keys() if pid != finishing_player_id and game.players[pid].rank is None]
+        
+        approvals = len(game.approval_votes)
+        rejections = len(game.opposition_votes)
+        total_votes = approvals + rejections
+        
+        # Decision: approve if >= 50% of votes are approvals
+        if total_votes > 0:
+            if approvals >= total_votes / 2:
+                # Approve
+                finish_result = game.confirm_finish()
+                if finish_result:
+                    msg = f"投票時間終了。{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
+                    
+                    if finish_result['game_over']:
+                        msg += " ゲーム終了！"
+                        await broadcast_game_state(
+                            game, 
+                            room_code, 
+                            message=msg, 
+                            game_over=True, 
+                            winner=finish_result['winner'], 
+                            ranks=finish_result['ranks']
+                        )
+                    else:
+                        msg += " ゲームを続けます。"
+                        await broadcast_game_state(game, room_code, message=msg)
+            else:
+                # Reject
+                game.revert_last_move()
+                await broadcast_game_state(game, room_code, message="投票時間終了。拒否多数により却下されました")
+        else:
+            # No votes - default to approve
+            finish_result = game.confirm_finish()
+            if finish_result:
+                msg = f"投票なし。{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
+                
+                if finish_result['game_over']:
+                    msg += " ゲーム終了！"
+                    await broadcast_game_state(
+                        game, 
+                        room_code, 
+                        message=msg, 
+                        game_over=True, 
+                        winner=finish_result['winner'], 
+                        ranks=finish_result['ranks']
+                    )
+                else:
+                    msg += " ゲームを続けます。"
+                    await broadcast_game_state(game, room_code, message=msg)
 
 async def broadcast_game_state(game: WordBasketGame, room_code: str, message: str = None, game_over: bool = False, winner: str = None, ranks: list = None):
     # Construct state for each player
