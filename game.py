@@ -310,13 +310,24 @@ class WordBasketGame:
             waiting_for_finish = False
 
             if len(player.hand) == 0:
-                # Player finished - Enter Finishing Check
-                self.status = "finishing_check"
-                self.approval_votes = set()  # Reset approval votes
-                waiting_for_finish = True
-                message = f"{player.name}さんが上がりました！承諾または拒否してください。"
+                # Player finished
+                # Check if solo play (only 1 player total)
+                if len(self.players) == 1:
+                    # Solo play - no voting needed, finish immediately
+                    player.rank = 1
+                    self.finished_players.append(player)
+                    self.status = "finished"
+                    game_over = True
+                    winner = player.name
+                    message = f"{player.name}さんがクリアしました！"
+                else:
+                    # Multi-player - Enter Finishing Check
+                    self.status = "finishing_check"
+                    self.approval_votes = set()  # Reset approval votes
+                    waiting_for_finish = True
+                    message = f"{player.name}さんが上がりました！承諾または拒否してください。"
                 
-                # We do NOT add to finished_players yet.
+                # We do NOT add to finished_players yet (except solo play).
                 # We wait for confirm_finish()
             
             return {

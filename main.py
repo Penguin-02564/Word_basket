@@ -135,26 +135,25 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                     if result.get("all_voted"):
                         if result.get("approved"):
                             # All voted and approved - finalize
-                            await broadcast_game_state(game, room_code, message="全員が承諾しました。ゲームを終了します...")
-                            
-                            # Wait 2 seconds to show the final word
-                            await asyncio.sleep(2)
-                            
-                            # Finalize the game
                             finish_result = game.confirm_finish()
                             if finish_result:
                                 msg = f"{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
-                                if finish_result['game_over']:
-                                    msg += f" 勝者: {finish_result['winner']}"
                                 
-                                await broadcast_game_state(
-                                    game, 
-                                    room_code, 
-                                    message=msg, 
-                                    game_over=finish_result['game_over'], 
-                                    winner=finish_result['winner'], 
-                                    ranks=finish_result['ranks']
-                                )
+                                if finish_result['game_over']:
+                                    # Game is over - show results
+                                    msg += f" ゲーム終了！"
+                                    await broadcast_game_state(
+                                        game, 
+                                        room_code, 
+                                        message=msg, 
+                                        game_over=True, 
+                                        winner=finish_result['winner'], 
+                                        ranks=finish_result['ranks']
+                                    )
+                                else:
+                                    # Game continues with remaining players
+                                    msg += " ゲームを続けます。"
+                                    await broadcast_game_state(game, room_code, message=msg)
                         else:
                             # Rejected
                             await broadcast_game_state(game, room_code, message=result["message"])
