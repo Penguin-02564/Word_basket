@@ -42,8 +42,10 @@ class WordBasketGame:
         self.players: Dict[str, Player] = {}
         self.current_word: str = ""
         self.dictionary: Set[str] = set()
-        self.status: str = "waiting" # waiting, playing, finished
+        self.status: str = "waiting" # waiting, playing, finished, finishing_check
         self.finished_players: List[Player] = []
+        self.opposition_votes: Set[str] = set()
+        self.pending_revert_state: Optional[dict] = None
 
         
         if dictionary_path is None:
@@ -141,6 +143,8 @@ class WordBasketGame:
         self.current_word = "ゲーム開始_" + start_char
         self.status = "playing"
         self.finished_players = []
+        self.opposition_votes = set()
+        self.pending_revert_state = None
         for p in self.players.values():
             p.rank = None
 
@@ -239,44 +243,231 @@ class WordBasketGame:
 
 
         if valid_card:
+            # Save state for potential revert if this is a finishing move
+            # actually we might want to save it for ANY move if we wanted to allow undo, 
+            # but requirement is specifically for "Oppose" on finishing move.
+            
+            previous_word = self.current_word
+            played_card = player.hand[card_index]
+            
             player.hand.pop(card_index)
             self.current_word = word
             
             message = "OK"
             game_over = False
             winner = None
+            waiting_for_finish = False
 
             if len(player.hand) == 0:
-                # Player finished
-                if player.rank is None:
-                    player.rank = len(self.finished_players) + 1
-                    self.finished_players.append(player)
-                    message = f"{player.name}さんが{player.rank}位で上がりました！"
+                # Player finished - Enter Finishing Check
+                self.status = "finishing_check"
+                self.opposition_votes = set()
+                self.pending_revert_state = {
+                    "player_id": player_id,
+                    "previous_word": previous_word,
+                    "played_card": played_card,
+                    "previous_rank": player.rank # Should be None
+                }
                 
-                # Check if game should end
-                # Game ends if all players finished OR only 1 player left (if started with > 1)
-                active_players_count = len([p for p in self.players.values() if p.rank is None])
+                waiting_for_finish = True
+                message = f"{player.name}さんが上がりました！反対があれば投票してください。"
                 
-                if active_players_count == 0:
-                    self.status = "finished"
-                    game_over = True
-                elif active_players_count == 1 and len(self.players) > 1:
-                    # Last player gets the last rank
-                    last_player = next(p for p in self.players.values() if p.rank is None)
-                    last_player.rank = len(self.finished_players) + 1
-                    self.finished_players.append(last_player)
-                    self.status = "finished"
-                    game_over = True
+                # We do NOT add to finished_players yet.
+                # We wait for confirm_finish()
             
             return {
                 "valid": True, 
                 "message": message, 
                 "game_over": game_over, 
-                "winner": self.finished_players[0].name if self.finished_players else None,
-                "ranks": [p.to_dict() for p in self.finished_players] if game_over else []
+                "waiting_for_finish": waiting_for_finish,
+                "winner": None,
+                "ranks": []
             }
         
         return {"valid": False, "message": "不明なエラー"}
+
+    def oppose_move(self, voter_id: str) -> dict:
+        if self.status != "finishing_check":
+            return {"success": False, "message": "反対投票できるタイミングではありません"}
+        
+        if voter_id in self.opposition_votes:
+            return {"success": False, "message": "既に投票済みです"}
+            
+        self.opposition_votes.add(voter_id)
+        
+        # Check majority
+        # Active players = total players - finished players (who are already out/safe?)
+        # Actually, everyone in the room should probably be able to vote? 
+        # "过半数のプレイヤー" (Majority of players). Let's assume all players currently in game.
+        active_player_count = len(self.players)
+        if len(self.opposition_votes) > active_player_count / 2:
+            self.revert_last_move()
+            return {"success": True, "reverted": True, "message": "反対多数により却下されました！"}
+            
+        return {"success": True, "reverted": False, "message": "反対票を受け付けました"}
+
+    def revert_last_move(self):
+        if not self.pending_revert_state:
+            return
+
+        state = self.pending_revert_state
+        player = self.players.get(state["player_id"])
+        
+        if player:
+            player.hand.append(state["played_card"])
+            # Reset rank just in case (though we didn't set it yet)
+            player.rank = state["previous_rank"]
+            
+        self.current_word = state["previous_word"]
+        self.status = "playing"
+        self.pending_revert_state = None
+        self.opposition_votes = set()
+
+    def confirm_finish(self):
+        if self.status != "finishing_check" or not self.pending_revert_state:
+            return None
+
+        state = self.pending_revert_state
+        player = self.players.get(state["player_id"])
+        
+        if player:
+            player.rank = len(self.finished_players) + 1
+            self.finished_players.append(player)
+            
+            # Check if game should end
+            active_players_count = len([p for p in self.players.values() if p.rank is None])
+            
+            game_over = False
+            if active_players_count == 0:
+                self.status = "finished"
+                game_over = True
+            elif active_players_count == 1 and len(self.players) > 1:
+                last_player = next(p for p in self.players.values() if p.rank is None)
+                last_player.rank = len(self.finished_players) + 1
+                self.finished_players.append(last_player)
+                self.status = "finished"
+                game_over = True
+            else:
+                self.status = "playing" # Continue game for others
+            
+            self.pending_revert_state = None
+            self.opposition_votes = set()
+            
+            return {
+                "game_over": game_over,
+                "winner": self.finished_players[0].name if self.finished_players else None,
+                "ranks": [p.to_dict() for p in self.finished_players] if game_over else [],
+                "finished_player": player.name,
+                "rank": player.rank
+            }
+        return None
+
+    def exchange_hand(self, player_id: str, card_index: int) -> dict:
+        if self.status != "playing":
+            return {"success": False, "message": "ゲーム中ではありません"}
+
+        player = self.players.get(player_id)
+        if not player:
+            return {"success": False, "message": "プレイヤーが見つかりません"}
+
+        if not (0 <= card_index < len(player.hand)):
+            return {"success": False, "message": "無効なカードです"}
+
+        # Logic:
+        # 1. Selected card becomes new target (current_word = card.value)
+        # 2. Return remaining hand to deck
+        # 3. Draw old_hand_size + 1
+        
+        selected_card = player.hand.pop(card_index)
+        
+        # Use the card's value as the new "word" to determine next target
+        # But wait, current_word usually is a full word. 
+        # If I set current_word = "あ", then next target is "あ".
+        # If card is "length", value is "3". 
+        # "文字数と開始文字、終了文字さえ合っていればどんな文字列でも受け付けていたが..."
+        # The user example: "Current word 'program', hand 'wa, shi, nu'. Select 'shi'. Next word starts with 'shi'."
+        # So effectively, we simulate playing 'shi' but without forming a word?
+        # Or we just force the next target char to be 'shi'.
+        # Setting current_word = "Exchange_" + char seems appropriate to set the target.
+        
+        new_target_char = ""
+        if selected_card.type == "char":
+            new_target_char = selected_card.value
+        elif selected_card.type == "row":
+            # For row card, maybe pick random or allow any?
+            # Usually row card means "ends with something in this row".
+            # If we use it to SET the start, maybe we pick the first char or random?
+            # User said "Select 'shi' (from hand)... Next word starts with 'shi'".
+            # If I select 'ka-row', maybe next word must start with something from 'ka-row'?
+            # Or just pick one? Let's pick a random one from the row to be safe/simple, or just set it as the constraint.
+            # But get_target_char relies on current_word.
+            # Let's set current_word to something that ends with the desired char.
+            # But for row card, it's a set of chars.
+            # Let's assume we just pick one for simplicity or if the user meant specific card.
+            # "Select 'shi'". 'shi' is a char card.
+            # If it's a row card, let's say 'ka-row', does it mean next word starts with 'ka', 'ki', etc?
+            # Standard Word Basket rules for "Reset": usually you play a card to change the leading character.
+            # If I play "ka-row", usually I'd have to play a word ending in ka-row.
+            # But here we are FORCING the change.
+            # Let's just pick the first char of the row or random.
+            # Or better, let's make a special "Exchange" word.
+            if len(selected_card.value) > 1:
+                 # It's a row card or similar. 
+                 # Let's pick random from it to be the new start char.
+                 new_target_char = random.choice(selected_card.value)
+            else:
+                 new_target_char = selected_card.value
+        elif selected_card.type == "length":
+            # Length card doesn't have a char.
+            # If used for exchange, what happens?
+            # Maybe it doesn't change the character? Or random?
+            # User example only mentioned char card.
+            # Let's assume length card cannot be used for this, or just changes nothing but hand?
+            # "Hand is returned... +1 card".
+            # If I use length card, maybe I just want to refresh hand.
+            # Let's keep current target if length card is used?
+            # Or maybe disallow length card?
+            # Let's allow it but keep current target.
+            new_target_char = self.get_target_char()
+
+        self.current_word = "リロード_" + new_target_char
+
+        # Return remaining hand to deck
+        self.deck.extend(player.hand)
+        player.hand = []
+        random.shuffle(self.deck)
+        
+        # Draw new hand (original size (which was len+1 before pop) + 1)
+        # Wait, "Original hand size + 1".
+        # If I had 3 cards. Selected 1. Remaining 2.
+        # Original size 3. New size 4.
+        # So I draw 4.
+        
+        old_hand_size = len(self.deck) - len(self.deck) + len(player.hand) + 1 # logic math is weird here because I already extended deck
+        # Actually:
+        # I popped 1. current player.hand is empty (I put them in deck).
+        # I want to draw (old_size + 1).
+        # old_size was (count of cards returned + 1 (the popped one)).
+        # So if I returned 2 cards, old size was 3. I want 4.
+        # So draw (returned_count + 2).
+        
+        cards_to_draw = len(self.deck) - len(self.deck) # 0? no.
+        # Let's track count before extending.
+        # actually I already extended.
+        # Let's just pass the number.
+        # I need to know how many cards were in hand BEFORE pop.
+        # It was `len(player.hand)` (before extend) + 1 (the popped one).
+        # Wait, I popped `selected_card` first.
+        # So `len(player.hand)` is now `original - 1`.
+        # I extended deck with `player.hand`.
+        # So I need to draw `(original - 1) + 2` = `original + 1`.
+        # So `len(cards_returned) + 2`.
+        
+        num_to_draw = 0 
+        # Wait, I can't easily know how many I extended since I didn't count.
+        # Let's rewrite slightly.
+        
+        pass # Placeholder to be overwritten by below logic
 
     def auto_select_card(self, player_id: str, word: str) -> Optional[int]:
         player = self.players.get(player_id)
@@ -320,7 +511,7 @@ class WordBasketGame:
         if player and set(priority) == {'char', 'row', 'length'} and len(priority) == 3:
             player.card_priority = priority
 
-    def reroll(self, player_id: str) -> dict:
+    def exchange_hand(self, player_id: str, card_index: int) -> dict:
         if self.status != "playing":
             return {"success": False, "message": "ゲーム中ではありません"}
 
@@ -328,21 +519,41 @@ class WordBasketGame:
         if not player:
             return {"success": False, "message": "プレイヤーが見つかりません"}
 
-        if len(self.deck) == 0:
-            return {"success": False, "message": "山札が空です"}
-        
-        current_hand_size = len(player.hand)
-        new_hand_size = current_hand_size + 1
-        
-        if len(self.deck) < new_hand_size:
-            return {"success": False, "message": f"山札不足（必要: {new_hand_size}枚）"}
-        
+        if not (0 <= card_index < len(player.hand)):
+            return {"success": False, "message": "無効なカードです"}
+
+        # 1. Get selected card
+        selected_card = player.hand.pop(card_index)
+        original_hand_size = len(player.hand) + 1
+
+        # 2. Determine new target
+        new_target_char = ""
+        if selected_card.type == "char":
+            new_target_char = selected_card.value
+        elif selected_card.type == "row":
+            # Pick random char from row
+            new_target_char = random.choice(selected_card.value)
+        elif selected_card.type == "length":
+            # Keep current target
+            new_target_char = self.get_target_char()
+
+        self.current_word = "リロード_" + new_target_char
+
+        # 3. Return remaining hand to deck
         self.deck.extend(player.hand)
         player.hand = []
         random.shuffle(self.deck)
-        player.hand = [self.deck.pop() for _ in range(new_hand_size)]
         
-        return {"success": True, "message": f"リロールしました（{new_hand_size}枚）"}
+        # 4. Draw new hand (original + 1)
+        num_to_draw = original_hand_size + 1
+        
+        if len(self.deck) < num_to_draw:
+             # Not enough cards? Just draw what we can.
+             num_to_draw = len(self.deck)
+        
+        player.hand = [self.deck.pop() for _ in range(num_to_draw)]
+        
+        return {"success": True, "message": f"手札を交換しました（{num_to_draw}枚）"}
 
 class GameManager:
     def __init__(self):

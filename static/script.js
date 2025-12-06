@@ -29,6 +29,7 @@ const els = {
     hand: document.getElementById('hand'),
     handLabel: document.getElementById('hand-label'),
     rerollBtn: document.getElementById('reroll-btn'),
+    opposeBtn: document.getElementById('oppose-btn'),
     menuBtn: document.getElementById('menu-btn'),
     opponentsArea: document.getElementById('opponents-area'),
 
@@ -81,7 +82,9 @@ function setupEventListeners() {
         if (e.key === 'Enter') submitWord();
     });
     els.wordInput.addEventListener('input', handleInput);
+    els.wordInput.addEventListener('input', handleInput);
     els.rerollBtn.addEventListener('click', sendReroll);
+    els.opposeBtn.addEventListener('click', sendOppose);
 
     // Result
     els.backToLobbyBtn.addEventListener('click', () => {
@@ -233,8 +236,23 @@ function sendPlayWord(word, cardIndex) {
 }
 
 function sendReroll() {
-    if (confirm("手札をリロールしますか？（手札が1枚増えます）")) {
-        state.ws.send(JSON.stringify({ action: "reroll" }));
+    if (state.selectedCardIndex === -1) {
+        alert("交換するカードを選択してください");
+        return;
+    }
+    if (confirm("選択したカードを消費して手札を交換しますか？（手札が1枚増えます）")) {
+        state.ws.send(JSON.stringify({
+            action: "reroll",
+            card_index: state.selectedCardIndex
+        }));
+        state.selectedCardIndex = -1; // Reset selection
+        renderHand();
+    }
+}
+
+function sendOppose() {
+    if (confirm("この上がりに反対しますか？")) {
+        state.ws.send(JSON.stringify({ action: "oppose" }));
     }
 }
 
@@ -312,6 +330,18 @@ function updateGameState(data) {
             els.wordInput.disabled = false;
             els.submitBtn.disabled = false;
             els.wordInput.placeholder = "単語を入力 (ひらがな)";
+        }
+
+        // Finishing Check State
+        if (data.status === 'finishing_check') {
+            els.opposeBtn.classList.remove('hidden');
+            els.wordInput.disabled = true;
+            els.submitBtn.disabled = true;
+            if (!data.message) { // If no specific message, show default
+                showMessage("上がり確認中... 反対があれば投票してください", false);
+            }
+        } else {
+            els.opposeBtn.classList.add('hidden');
         }
 
         if (data.game_over) {
