@@ -413,6 +413,7 @@ function updateGameState(data) {
             els.votingModal.classList.add('hidden');
         }
 
+        // Check for game over (must be outside finishing_check block)
         if (data.game_over) {
             // Hide voting modal when game is over
             els.votingModal.classList.add('hidden');
