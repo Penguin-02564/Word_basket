@@ -336,7 +336,7 @@ function updateGameState(data) {
         }
     }
     // Update Game Screen
-    else if (data.status === 'playing' || data.status === 'finished') {
+    else if (data.status === 'playing' || data.status === 'finished' || data.status === 'finishing_check') {
         if (!document.getElementById('game-screen').classList.contains('active')) {
             showScreen('game-screen');
         }
