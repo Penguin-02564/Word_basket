@@ -43,6 +43,10 @@ const els = {
 
     // Modal
     settingsModal: document.getElementById('settings-modal'),
+
+    // Disconnect buttons
+    disconnectWaitingBtn: document.getElementById('disconnect-waiting-btn'),
+    disconnectGameBtn: document.getElementById('disconnect-game-btn'),
     closeModalBtn: document.querySelector('.close-btn'),
     priorityList: document.getElementById('priority-list'),
     autoSelectToggle: document.getElementById('auto-select-toggle'),
@@ -97,6 +101,10 @@ function setupEventListeners() {
     els.approveBtn.addEventListener('click', sendApprove);
     els.voteApproveBtn.addEventListener('click', sendApprove);
     els.voteRejectBtn.addEventListener('click', sendOppose);
+
+    // Disconnect buttons
+    els.disconnectWaitingBtn.addEventListener('click', disconnectAndReturnToTitle);
+    els.disconnectGameBtn.addEventListener('click', disconnectAndReturnToTitle);
 
     // Result
     els.backToLobbyBtn.addEventListener('click', () => {
@@ -281,6 +289,17 @@ function sendPriority() {
     }));
 }
 
+function disconnectAndReturnToTitle() {
+    if (confirm("切断してタイトル画面に戻りますか？")) {
+        if (state.ws) {
+            state.ws.close();
+            state.ws = null;
+        }
+        clearPlayerState();
+        showScreen('lobby-screen');
+    }
+}
+
 // --- UI Updates ---
 
 function showScreen(screenId) {
@@ -354,30 +373,6 @@ function updateGameState(data) {
         if (data.status === 'playing' || data.status === 'finishing_check') {
             els.opposeBtn.classList.remove('hidden');
         } else {
-            els.opposeBtn.classList.add('hidden');
-        }
-
-        // Voting Modal: show during finishing_check
-        if (data.status === 'finishing_check') {
-            els.votingModal.classList.remove('hidden');
-            els.votingWord.textContent = data.current_word;
-
-            const approvals = data.approval_votes || 0;
-            const rejections = data.opposition_votes || 0;
-            const totalPlayers = data.active_players || 0;
-            const finishingPlayers = totalPlayers - 1;
-
-            els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
-
-            // Disable word input
-            els.wordInput.disabled = true;
-            els.submitBtn.disabled = true;
-        } else {
-            els.votingModal.classList.add('hidden');
-        }
-
-        if (data.game_over) {
-            renderResultScreen(data.ranks);
             showScreen('result-screen');
 
             // Hide back button for non-hosts
