@@ -380,9 +380,10 @@ function updateGameState(data) {
         if (data.status === 'finishing_check') {
             const myPlayer = data.players_info.find(p => p.player_id === state.playerId);
             const hasVoted = data.has_voted || false;
+            const isFinishingPlayer = data.finishing_player_id === state.playerId;
 
-            // Only show modal if this player hasn't finished yet AND hasn't voted
-            if (myPlayer && !myPlayer.rank && !hasVoted) {
+            // Only show modal if: not the finishing player AND hasn't voted yet
+            if (myPlayer && !isFinishingPlayer && !hasVoted) {
                 console.log('Showing voting modal for finishing_check');
                 els.votingModal.classList.remove('hidden');
                 els.votingWord.textContent = data.current_word;
@@ -398,11 +399,11 @@ function updateGameState(data) {
                 els.wordInput.disabled = true;
                 els.submitBtn.disabled = true;
             } else {
-                console.log('Hiding voting modal - player has finished or voted');
+                console.log('Hiding voting modal - player is finishing player, has finished, or voted');
                 els.votingModal.classList.add('hidden');
 
-                // Show waiting message for finishing player or voted player
-                if ((myPlayer && myPlayer.rank) || hasVoted) {
+                // Show waiting message for finishing player, finished player, or voted player
+                if (isFinishingPlayer || (myPlayer && myPlayer.rank) || hasVoted) {
                     els.wordInput.disabled = true;
                     els.submitBtn.disabled = true;
                     els.wordInput.placeholder = "他のプレイヤーの投票を待っています...";

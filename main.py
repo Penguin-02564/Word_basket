@@ -228,7 +228,8 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
         "ranks": ranks or [],
         "opposition_votes": len(game.opposition_votes),
         "approval_votes": len(game.approval_votes),
-        "active_players": len(game.players)
+        "active_players": len(game.players),
+        "finishing_player_id": game.pending_revert_state.get("player_id") if game.pending_revert_state else None
     }
     
     # Players info (public)
