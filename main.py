@@ -118,34 +118,49 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                     msg = f"{player.name}さんが「{word}」を出しました！"
                     
                     if result.get("waiting_for_finish"):
-                        # Broadcast "Finishing Check" state
+                        # Broadcast "Finishing Check" state - wait for approval/rejection
                         await broadcast_game_state(game, room_code, message=msg)
-                        
-                        # Wait 5 seconds for opposition
-                        await asyncio.sleep(5)
-                        
-                        # Check if still in finishing_check (might have been reverted)
-                        finish_result = game.confirm_finish()
-                        if finish_result:
-                            # Game finished (or player finished and game continues)
-                            msg = f"{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
-                            if finish_result['game_over']:
-                                msg += f" 勝者: {finish_result['winner']}"
-                            
-                            await broadcast_game_state(
-                                game, 
-                                room_code, 
-                                message=msg, 
-                                game_over=finish_result['game_over'], 
-                                winner=finish_result['winner'], 
-                                ranks=finish_result['ranks']
-                            )
                     elif result.get("game_over"):
                         # Should not happen with new logic, but keep for safety
                         msg = f"{player.name}さんがクリアしました！勝者: {player.name}"
                         await broadcast_game_state(game, room_code, message=msg, game_over=True, winner=player.name, ranks=result.get("ranks", []))
                     else:
                         await broadcast_game_state(game, room_code, message=msg)
+                else:
+                    await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
+            elif action == "approve":
+                result = game.approve_finish(player_id)
+                if result["success"]:
+                    if result.get("all_voted"):
+                        if result.get("approved"):
+                            # All voted and approved - finalize
+                            await broadcast_game_state(game, room_code, message="全員が承諾しました。ゲームを終了します...")
+                            
+                            # Wait 2 seconds to show the final word
+                            await asyncio.sleep(2)
+                            
+                            # Finalize the game
+                            finish_result = game.confirm_finish()
+                            if finish_result:
+                                msg = f"{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
+                                if finish_result['game_over']:
+                                    msg += f" 勝者: {finish_result['winner']}"
+                                
+                                await broadcast_game_state(
+                                    game, 
+                                    room_code, 
+                                    message=msg, 
+                                    game_over=finish_result['game_over'], 
+                                    winner=finish_result['winner'], 
+                                    ranks=finish_result['ranks']
+                                )
+                        else:
+                            # Rejected
+                            await broadcast_game_state(game, room_code, message=result["message"])
+                    else:
+                        # Not all voted yet
+                        await broadcast_game_state(game, room_code, message=f"{player.name}さんが承諾しました")
                 else:
                     await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
             
@@ -209,9 +224,11 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
         "dictionary_size": len(game.dictionary),
         "message": message,
         "game_over": game_over,
-        "game_over": game_over,
         "winner": winner,
-        "ranks": ranks or []
+        "ranks": ranks or [],
+        "opposition_votes": len(game.opposition_votes),
+        "approval_votes": len(game.approval_votes),
+        "active_players": len(game.players)
     }
     
     # Players info (public)

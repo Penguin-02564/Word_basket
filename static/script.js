@@ -30,6 +30,7 @@ const els = {
     handLabel: document.getElementById('hand-label'),
     rerollBtn: document.getElementById('reroll-btn'),
     opposeBtn: document.getElementById('oppose-btn'),
+    approveBtn: document.getElementById('approve-btn'),
     menuBtn: document.getElementById('menu-btn'),
     opponentsArea: document.getElementById('opponents-area'),
 
@@ -86,6 +87,7 @@ function setupEventListeners() {
     els.wordInput.addEventListener('input', handleInput);
     els.rerollBtn.addEventListener('click', sendReroll);
     els.opposeBtn.addEventListener('click', sendOppose);
+    els.approveBtn.addEventListener('click', sendApprove);
 
     // Result
     els.backToLobbyBtn.addEventListener('click', () => {
@@ -257,6 +259,12 @@ function sendOppose() {
     }
 }
 
+function sendApprove() {
+    if (confirm("この上がりを承諾しますか？")) {
+        state.ws.send(JSON.stringify({ action: "approve" }));
+    }
+}
+
 function sendPriority() {
     state.ws.send(JSON.stringify({
         action: "set_priority",
@@ -340,34 +348,21 @@ function updateGameState(data) {
             els.opposeBtn.classList.add('hidden');
         }
 
-        // Finishing Check State - Add countdown
+        // Approve button: only show during finishing_check
         if (data.status === 'finishing_check') {
+            els.approveBtn.classList.remove('hidden');
             els.wordInput.disabled = true;
             els.submitBtn.disabled = true;
 
-            // Start countdown display
-            let countdown = 5;
-            els.wordInput.placeholder = `上がり確認中... ${countdown}秒`;
+            // Show vote counts
+            const approvals = data.approval_votes || 0;
+            const rejections = data.opposition_votes || 0;
+            const totalPlayers = data.active_players || 0;
+            const finishingPlayers = totalPlayers - 1; // Excluding finishing player
 
-            if (state.finishingCountdown) {
-                clearInterval(state.finishingCountdown);
-            }
-
-            state.finishingCountdown = setInterval(() => {
-                countdown--;
-                if (countdown >= 0) {
-                    els.wordInput.placeholder = `上がり確認中... ${countdown}秒`;
-                } else {
-                    clearInterval(state.finishingCountdown);
-                    state.finishingCountdown = null;
-                }
-            }, 1000);
+            els.wordInput.placeholder = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
         } else {
-            // Clear countdown if not in finishing_check
-            if (state.finishingCountdown) {
-                clearInterval(state.finishingCountdown);
-                state.finishingCountdown = null;
-            }
+            els.approveBtn.classList.add('hidden');
         }
 
         if (data.game_over) {

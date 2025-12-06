@@ -45,6 +45,7 @@ class WordBasketGame:
         self.status: str = "waiting" # waiting, playing, finished, finishing_check
         self.finished_players: List[Player] = []
         self.opposition_votes: Set[str] = set()
+        self.approval_votes: Set[str] = set()  # For game end approval
         self.pending_revert_state: Optional[dict] = None
 
         
@@ -144,6 +145,7 @@ class WordBasketGame:
         self.status = "playing"
         self.finished_players = []
         self.opposition_votes = set()
+        self.approval_votes = set()
         self.pending_revert_state = None
         for p in self.players.values():
             p.rank = None
@@ -310,8 +312,9 @@ class WordBasketGame:
             if len(player.hand) == 0:
                 # Player finished - Enter Finishing Check
                 self.status = "finishing_check"
+                self.approval_votes = set()  # Reset approval votes
                 waiting_for_finish = True
-                message = f"{player.name}さんが上がりました！拒否があれば投票してください。"
+                message = f"{player.name}さんが上がりました！承諾または拒否してください。"
                 
                 # We do NOT add to finished_players yet.
                 # We wait for confirm_finish()
@@ -340,9 +343,9 @@ class WordBasketGame:
             
         self.opposition_votes.add(voter_id)
         
-        # Check majority
+        # Check majority (>= 50%)
         active_player_count = len(self.players)
-        if len(self.opposition_votes) > active_player_count / 2:
+        if len(self.opposition_votes) >= active_player_count / 2:
             was_finishing = self.pending_revert_state.get("was_finishing", False)
             self.revert_last_move()
             return {"success": True, "reverted": True, "message": "拒否多数により却下されました！"}
@@ -367,6 +370,38 @@ class WordBasketGame:
         
         self.pending_revert_state = None
         self.opposition_votes = set()
+        self.approval_votes = set()
+
+    def approve_finish(self, voter_id: str) -> dict:
+        """Approve the finishing move."""
+        if self.status != "finishing_check":
+            return {"success": False, "message": "承諾できるタイミングではありません"}
+        
+        if voter_id in self.approval_votes:
+            return {"success": False, "message": "既に承諾済みです"}
+        
+        # Can't approve if already opposed
+        if voter_id in self.opposition_votes:
+            return {"success": False, "message": "既に拒否済みです"}
+            
+        self.approval_votes.add(voter_id)
+        
+        # Check if all active players (excluding the finishing player) have voted
+        finishing_player_id = self.pending_revert_state.get("player_id") if self.pending_revert_state else None
+        active_players = [pid for pid in self.players.keys() if pid != finishing_player_id]
+        total_votes = len(self.approval_votes) + len(self.opposition_votes)
+        
+        if total_votes >= len(active_players):
+            # All players have voted
+            # Check if majority approved (>= 50%)
+            if len(self.approval_votes) >= len(active_players) / 2:
+                return {"success": True, "all_voted": True, "approved": True, "message": "承諾されました"}
+            else:
+                # Majority rejected
+                self.revert_last_move()
+                return {"success": True, "all_voted": True, "approved": False, "message": "拒否多数により却下されました"}
+        
+        return {"success": True, "all_voted": False, "message": "承諾票を受け付けました"}
 
     def confirm_finish(self):
         if self.status != "finishing_check" or not self.pending_revert_state:
