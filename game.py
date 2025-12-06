@@ -408,9 +408,10 @@ class WordBasketGame:
             
         self.approval_votes.add(voter_id)
         
-        # Check if all active players (excluding the finishing player) have voted
+        # Check if all active players (excluding the finishing player and finished players) have voted
         finishing_player_id = self.pending_revert_state.get("player_id") if self.pending_revert_state else None
-        active_players = [pid for pid in self.players.keys() if pid != finishing_player_id]
+        active_players = [pid for pid in self.players.keys() 
+                         if pid != finishing_player_id and self.players[pid].rank is None]
         total_votes = len(self.approval_votes) + len(self.opposition_votes)
         
         if total_votes >= len(active_players):

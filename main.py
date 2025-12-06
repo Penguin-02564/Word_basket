@@ -275,6 +275,11 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
     # Construct state for each player
     # We need to send personalized state (own hand) + public state (others' hand counts)
     
+    # Calculate active voting players (exclude finishing player and finished players)
+    finishing_player_id = game.pending_revert_state.get("player_id") if game.pending_revert_state else None
+    active_voting_players = len([pid for pid in game.players.keys() 
+                                  if pid != finishing_player_id and game.players[pid].rank is None])
+    
     common_state = {
         "type": "game_state",
         "room_code": room_code,
@@ -290,7 +295,8 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
         "opposition_votes": len(game.opposition_votes),
         "approval_votes": len(game.approval_votes),
         "active_players": len(game.players),
-        "finishing_player_id": game.pending_revert_state.get("player_id") if game.pending_revert_state else None
+        "active_voting_players": active_voting_players,
+        "finishing_player_id": finishing_player_id
     }
     
     # Players info (public)

@@ -390,10 +390,9 @@ function updateGameState(data) {
 
                 const approvals = data.approval_votes || 0;
                 const rejections = data.opposition_votes || 0;
-                const totalPlayers = data.active_players || 0;
-                const finishingPlayers = totalPlayers - 1;
+                const activeVotingPlayers = data.active_voting_players || 0;
 
-                els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
+                els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${activeVotingPlayers}人)`;
 
                 // Disable word input
                 els.wordInput.disabled = true;
