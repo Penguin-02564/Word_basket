@@ -373,6 +373,32 @@ function updateGameState(data) {
         if (data.status === 'playing' || data.status === 'finishing_check') {
             els.opposeBtn.classList.remove('hidden');
         } else {
+            els.opposeBtn.classList.add('hidden');
+        }
+
+        // Voting Modal: show during finishing_check
+        if (data.status === 'finishing_check') {
+            console.log('Showing voting modal for finishing_check');
+            els.votingModal.classList.remove('hidden');
+            els.votingWord.textContent = data.current_word;
+
+            const approvals = data.approval_votes || 0;
+            const rejections = data.opposition_votes || 0;
+            const totalPlayers = data.active_players || 0;
+            const finishingPlayers = totalPlayers - 1;
+
+            els.votingStatus.textContent = `承諾: ${approvals} / 拒否: ${rejections} (全${finishingPlayers}人)`;
+
+            // Disable word input
+            els.wordInput.disabled = true;
+            els.submitBtn.disabled = true;
+        } else {
+            console.log('Hiding voting modal, status:', data.status);
+            els.votingModal.classList.add('hidden');
+        }
+
+        if (data.game_over) {
+            renderResultScreen(data.ranks);
             showScreen('result-screen');
 
             // Hide back button for non-hosts
