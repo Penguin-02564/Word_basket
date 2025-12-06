@@ -414,7 +414,9 @@ function updateGameState(data) {
         }
 
         // Check for game over (must be outside finishing_check block)
+        console.log('Checking game_over:', data.game_over, 'status:', data.status);
         if (data.game_over) {
+            console.log('Game over! Transitioning to result screen');
             // Hide voting modal when game is over
             els.votingModal.classList.add('hidden');
 
