@@ -338,6 +338,12 @@ class WordBasketGame:
         if not self.pending_revert_state:
             return {"success": False, "message": "拒否できる手がありません"}
         
+        # Prevent finishing player from voting during finishing_check
+        if self.status == "finishing_check":
+            finishing_player_id = self.pending_revert_state.get("player_id")
+            if voter_id == finishing_player_id:
+                return {"success": False, "message": "上がったプレイヤーは投票できません"}
+        
         if voter_id in self.opposition_votes:
             return {"success": False, "message": "既に投票済みです"}
             
@@ -376,6 +382,11 @@ class WordBasketGame:
         """Approve the finishing move."""
         if self.status != "finishing_check":
             return {"success": False, "message": "承諾できるタイミングではありません"}
+        
+        # Prevent finishing player from voting
+        finishing_player_id = self.pending_revert_state.get("player_id") if self.pending_revert_state else None
+        if voter_id == finishing_player_id:
+            return {"success": False, "message": "上がったプレイヤーは投票できません"}
         
         if voter_id in self.approval_votes:
             return {"success": False, "message": "既に承諾済みです"}
