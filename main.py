@@ -88,7 +88,19 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
     try:
         # Broadcast room update
         msg = f"{player.name}さんが再接続しました" if is_reconnect else f"{player.name}さんが参加しました"
-        await broadcast_game_state(game, room_code, message=msg)
+        
+        # If game is finished, send game_over and ranks
+        if game.status == "finished":
+            await broadcast_game_state(
+                game, 
+                room_code, 
+                message=msg, 
+                game_over=True, 
+                winner=game.finished_players[0].name if game.finished_players else None,
+                ranks=[p.to_dict() for p in game.finished_players]
+            )
+        else:
+            await broadcast_game_state(game, room_code, message=msg)
         
         while True:
             data = await websocket.receive_json()
