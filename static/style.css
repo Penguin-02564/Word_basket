@@ -274,6 +274,11 @@ h1 {
     overflow: hidden;
 }
 
+.current-word-container>.status-panel {
+    /* PC: hide status panel inside container, show it separately */
+    display: none;
+}
+
 .current-word-container::before {
     content: '';
     position: absolute;
@@ -317,6 +322,16 @@ h1 {
     padding: 10px;
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.current-word-container>.status-panel {
+    /* PC: hide status panel inside container */
+    display: none;
+}
+
+/* Standalone status panel (PC only) */
+.game-info>.status-panel {
+    display: flex;
 }
 
 .status-item {
@@ -419,7 +434,7 @@ button:active {
 
 .hand {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 8px;
     justify-items: center;
     max-width: 600px;
@@ -432,8 +447,8 @@ button:active {
 
 .card {
     background: var(--card-bg);
-    border-radius: 8px;
-    padding: 10px 4px;
+    border-radius: 10px;
+    padding: 12px 5px;
     text-align: center;
     box-shadow: var(--card-shadow);
     cursor: pointer;
@@ -446,7 +461,6 @@ button:active {
     align-items: center;
     width: 100%;
     aspect-ratio: 0.75;
-    max-width: 60px;
 }
 
 .card:hover {
@@ -469,7 +483,7 @@ button:active {
 
 .card-value {
     font-family: var(--font-rounded);
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     font-weight: 800;
     color: var(--text-color);
 }
@@ -712,34 +726,68 @@ button:active {
         letter-spacing: 3px;
     }
 
-    /* Game Screen - Header buttons */
+    /* Game Screen - Header */
     header {
-        grid-template-columns: auto 1fr;
+        grid-template-columns: auto 1fr auto;
         gap: 8px;
     }
 
     header h1 {
-        grid-column: span 2;
-        text-align: left;
-        font-size: 1.4rem;
-    }
-
-    #menu-btn {
-        order: -1;
+        text-align: center;
+        font-size: 1.2rem;
     }
 
     .header-buttons {
-        grid-column: span 2;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: flex;
         gap: 6px;
-        width: 100%;
     }
 
     .header-buttons button {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         padding: 8px 10px;
         white-space: nowrap;
+    }
+
+    /* Game Info - スマホ用レイアウト */
+    .current-word-container {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 8px;
+        padding: 15px;
+    }
+
+    .current-word-container .label {
+        grid-column: 1 / -1;
+        margin-bottom: 0;
+    }
+
+    .word-display {
+        grid-column: 2;
+        grid-row: 2;
+        text-align: left;
+    }
+
+    .next-char-hint {
+        grid-column: 2;
+        grid-row: 3;
+        text-align: left;
+    }
+
+    .status-panel {
+        grid-column: 1;
+        grid-row: 2 / 4;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .status-item {
+        background: #f8f9fa;
+        padding: 8px;
+        border-radius: 8px;
     }
 
     /* Game Info */
