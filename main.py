@@ -6,6 +6,7 @@ from game import WordBasketGame, GameManager
 import os
 import json
 import uuid
+import asyncio
 from typing import Dict, List
 
 app = FastAPI()
@@ -154,6 +155,9 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                             if finish_result:
                                 msg = f"{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
                                 
+                                # Debug log
+                                print(f"[DEBUG] confirm_finish result: game_over={finish_result['game_over']}, status={game.status}, ranks={finish_result['ranks']}")
+                                
                                 if finish_result['game_over']:
                                     # Game is over - show results
                                     msg += f" ゲーム終了！"
@@ -246,6 +250,9 @@ async def voting_timeout(game: WordBasketGame, room_code: str, timeout_seconds: 
                 if finish_result:
                     msg = f"投票時間終了。{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
                     
+                    # Debug log
+                    print(f"[DEBUG] voting_timeout (approved): game_over={finish_result['game_over']}, status={game.status}, ranks={finish_result['ranks']}")
+                    
                     if finish_result['game_over']:
                         msg += " ゲーム終了！"
                         await broadcast_game_state(
@@ -268,6 +275,9 @@ async def voting_timeout(game: WordBasketGame, room_code: str, timeout_seconds: 
             finish_result = game.confirm_finish()
             if finish_result:
                 msg = f"投票なし。{finish_result['finished_player']}さんが{finish_result['rank']}位で確定しました！"
+                
+                # Debug log
+                print(f"[DEBUG] voting_timeout (no votes): game_over={finish_result['game_over']}, status={game.status}, ranks={finish_result['ranks']}")
                 
                 if finish_result['game_over']:
                     msg += " ゲーム終了！"
