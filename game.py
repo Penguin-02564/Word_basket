@@ -112,13 +112,14 @@ class WordBasketGame:
         for name, chars in rows:
             self.deck.append(Card("row", chars, name))
 
-        # Length cards
+        # Length cards (2 of each for 60 card total)
         lengths = [5, 6, 7]
         for l in lengths:
             display = f"{l}文字" if l < 7 else "7文字以上"
             val = str(l)
-            for _ in range(3):
+            for _ in range(2):  # Changed from 3 to 2
                 self.deck.append(Card("length", val, display))
+
 
     def add_player(self, player_id: str, name: str) -> Player:
         is_host = len(self.players) == 0
