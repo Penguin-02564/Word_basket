@@ -67,11 +67,17 @@ body {
 }
 
 header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
+    gap: 10px;
     padding-bottom: 10px;
     border-bottom: 2px solid #eee;
+}
+
+header h1 {
+    text-align: center;
+    margin: 0;
 }
 
 h1 {
@@ -230,7 +236,7 @@ h1 {
 .game-info {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
     text-align: center;
 }
 
@@ -327,7 +333,7 @@ h1 {
 .play-area {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .input-group {
@@ -366,7 +372,7 @@ button:active {
 .primary-btn {
     background-color: var(--primary-color);
     color: white;
-    padding: 0 25px;
+    padding: 12px 25px;
     font-size: 1.1rem;
 }
 
@@ -377,7 +383,7 @@ button:active {
 .secondary-btn {
     background-color: #eee;
     color: #555;
-    padding: 8px 15px;
+    padding: 10px 15px;
     font-size: 0.9rem;
 }
 
@@ -401,7 +407,7 @@ button:active {
 }
 
 .hand-container {
-    margin-top: 10px;
+    margin-top: 5px;
 }
 
 .hand-label {
@@ -413,8 +419,8 @@ button:active {
 
 .hand {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
     justify-items: center;
     max-width: 600px;
     margin: 0 auto;
@@ -426,8 +432,8 @@ button:active {
 
 .card {
     background: var(--card-bg);
-    border-radius: 10px;
-    padding: 15px 5px;
+    border-radius: 8px;
+    padding: 10px 4px;
     text-align: center;
     box-shadow: var(--card-shadow);
     cursor: pointer;
@@ -438,8 +444,9 @@ button:active {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    width: 70px;
-    height: 93.33px;
+    width: 100%;
+    aspect-ratio: 0.75;
+    max-width: 60px;
 }
 
 .card:hover {
@@ -462,7 +469,7 @@ button:active {
 
 .card-value {
     font-family: var(--font-rounded);
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 800;
     color: var(--text-color);
 }
@@ -707,14 +714,25 @@ button:active {
 
     /* Game Screen - Header buttons */
     header {
-        flex-wrap: wrap;
-        gap: 10px;
+        grid-template-columns: auto 1fr;
+        gap: 8px;
+    }
+
+    header h1 {
+        grid-column: span 2;
+        text-align: left;
+        font-size: 1.4rem;
+    }
+
+    #menu-btn {
+        order: -1;
     }
 
     .header-buttons {
+        grid-column: span 2;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        gap: 6px;
         width: 100%;
     }
 
@@ -722,10 +740,6 @@ button:active {
         font-size: 0.75rem;
         padding: 8px 10px;
         white-space: nowrap;
-    }
-
-    #menu-btn {
-        grid-column: span 2;
     }
 
     /* Game Info */
@@ -759,22 +773,22 @@ button:active {
     /* Hand/Cards */
     .hand {
         grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
+        gap: 6px;
     }
 
     .card {
         width: 100%;
-        height: auto;
+        max-width: none;
         aspect-ratio: 0.75;
-        padding: 10px 5px;
+        padding: 8px 3px;
     }
 
     .card-value {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
 
     .card-type {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     /* Voting Modal */
