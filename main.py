@@ -59,6 +59,16 @@ manager = ConnectionManager()
 class CreateRoomResponse(BaseModel):
     room_code: str
 
+# Health check endpoint for Render
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+# Root endpoint
+@app.get("/api")
+def api_root():
+    return {"message": "Word Basket API is running"}
+
 @app.post("/api/rooms")
 def create_room():
     room_code = game_manager.create_room()
