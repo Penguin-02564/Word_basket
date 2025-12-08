@@ -665,23 +665,205 @@ button:active {
 }
 
 /* Responsive adjustments */
-@media (max-width: 480px) {
-    .word-display {
-        font-size: 2rem;
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
     }
 
-    .hand {
-        grid-template-columns: repeat(4, 1fr);
+    .app-container {
+        padding: 15px;
+        border-radius: 15px;
+    }
+
+    h1 {
+        font-size: 1.4rem;
+    }
+
+    /* Lobby Screen */
+    .join-input-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .join-input-group input {
+        width: 100%;
+    }
+
+    .join-input-group button {
+        width: 100%;
+        padding: 12px;
+    }
+
+    .primary-btn {
+        width: 100%;
+        padding: 12px 20px;
+    }
+
+    /* Waiting Screen */
+    .room-code-display {
+        font-size: 2.5rem;
+        letter-spacing: 3px;
+    }
+
+    /* Game Screen - Header buttons */
+    header {
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .header-buttons {
-        flex-direction: column;
-        gap: 5px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
     }
 
-    .secondary-btn {
-        font-size: 0.8rem;
+    .header-buttons button {
+        font-size: 0.75rem;
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+
+    #menu-btn {
+        grid-column: span 2;
+    }
+
+    /* Game Info */
+    .word-display {
+        font-size: 1.8rem;
+    }
+
+    .next-char-hint {
+        font-size: 1rem;
+    }
+
+    #target-char {
+        font-size: 1.2rem;
+    }
+
+    /* Play Area */
+    .input-group {
+        flex-direction: column;
+    }
+
+    .input-group input[type="text"] {
+        width: 100%;
+        font-size: 1rem;
+    }
+
+    .input-group button {
+        width: 100%;
+        padding: 12px;
+    }
+
+    /* Hand/Cards */
+    .hand {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .card {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 0.75;
+        padding: 10px 5px;
+    }
+
+    .card-value {
+        font-size: 1.2rem;
+    }
+
+    .card-type {
+        font-size: 0.55rem;
+    }
+
+    /* Voting Modal */
+    .voting-content {
+        padding: 30px 20px;
+    }
+
+    .voting-word-display {
+        font-size: 2.2rem;
+        padding: 15px;
+    }
+
+    .voting-message {
+        font-size: 1.1rem;
+    }
+
+    .vote-btn {
+        padding: 15px;
+        font-size: 1.1rem;
+    }
+
+    /* Status Panel */
+    .status-panel {
+        flex-direction: row;
+        gap: 10px;
+    }
+
+    .status-item .value {
+        font-size: 1.1rem;
+    }
+
+    /* Opponents */
+    .opponent-card {
+        font-size: 0.75rem;
         padding: 6px 12px;
+    }
+
+    .opponent-card .count {
+        font-size: 1rem;
+    }
+
+    /* Modals */
+    .modal-content {
+        width: 95%;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .priority-item {
+        padding: 12px;
+    }
+
+    .priority-number {
+        font-size: 1.3rem;
+    }
+
+    .priority-label {
+        font-size: 0.9rem;
+    }
+}
+
+/* Even smaller screens */
+@media (max-width: 480px) {
+    .word-display {
+        font-size: 1.5rem;
+    }
+
+    .hand {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .card-value {
+        font-size: 1.1rem;
+    }
+
+    .header-buttons button {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+    }
+
+    .voting-word-display {
+        font-size: 1.8rem;
+    }
+
+    .voting-buttons {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -751,6 +933,7 @@ button:active {
         opacity: 0;
         transform: scale(0.8) translateY(-50px);
     }
+
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
