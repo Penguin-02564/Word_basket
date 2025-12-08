@@ -460,6 +460,7 @@ button:active {
     justify-content: center;
     align-items: center;
     width: 100%;
+    max-width: 70px;
     aspect-ratio: 0.75;
 }
 
@@ -765,13 +766,13 @@ button:active {
     .word-display {
         grid-column: 2;
         grid-row: 2;
-        text-align: left;
+        text-align: center;
     }
 
     .next-char-hint {
         grid-column: 2;
         grid-row: 3;
-        text-align: left;
+        text-align: center;
     }
 
     .status-panel {
