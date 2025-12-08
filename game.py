@@ -96,16 +96,18 @@ class WordBasketGame:
     def initialize_deck(self):
         self.deck = []
         # Hiragana cards
-        hiragana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわを"
+        hiragana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわ"
         for char in hiragana:
             self.deck.append(Card("char", char, char))
         
-        # Row cards
+        # Add extra "わ" card (2x total)
+        self.deck.append(Card("char", "わ", "わ"))
+        
+        # Row cards (わ行 removed for balance)
         rows = [
             ("あ行", "あいうえお"), ("か行", "かきくけこ"), ("さ行", "さしすせそ"),
             ("た行", "たちつてと"), ("な行", "なにぬねの"), ("は行", "はひふへほ"),
-            ("ま行", "まみむめも"), ("や行", "やゆよ"), ("ら行", "らりるれろ"),
-            ("わ行", "わを")
+            ("ま行", "まみむめも"), ("や行", "やゆよ"), ("ら行", "らりるれろ")
         ]
         for name, chars in rows:
             self.deck.append(Card("row", chars, name))
@@ -159,7 +161,7 @@ class WordBasketGame:
         elif char == 'ヶ': char = 'け'
         elif char == 'ヴ': char = 'う'
 
-        # 2. Remove Dakuten/Handakuten and normalize small ya/yu/yo
+        # 2. Remove Dakuten/Handakuten and normalize small kana
         mapping = {
             'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
             'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
@@ -167,6 +169,8 @@ class WordBasketGame:
             'ば': 'は', 'び': 'ひ', 'ぶ': 'ふ', 'べ': 'へ', 'ぼ': 'ほ',
             'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ',
             'ゃ': 'や', 'ゅ': 'ゆ', 'ょ': 'よ',
+            'ぁ': 'あ', 'ぃ': 'い', 'ぅ': 'う', 'ぇ': 'え', 'ぉ': 'お',
+            'っ': 'つ', 'ゎ': 'わ',
         }
         return mapping.get(char, char)
 
@@ -208,6 +212,7 @@ class WordBasketGame:
         return vowel_map.get(char, char)
 
     def get_target_char(self):
+        """Get the target character for display (normalized: no dakuten, katakana->hiragana)."""
         if not self.current_word:
             return ""
         
@@ -215,10 +220,12 @@ class WordBasketGame:
         if last_char == "ー" and len(self.current_word) > 1:
             # Get the character before the long vowel mark
             prev_char = self.current_word[-2]
-            # Return the vowel of that character
-            return self.get_vowel(prev_char)
+            # Return the vowel of that character (normalized)
+            vowel = self.get_vowel(prev_char)
+            return self.normalize_kana(vowel)
         
-        return last_char
+        # Normalize for display: remove dakuten/handakuten, convert katakana to hiragana
+        return self.normalize_kana(last_char)
 
 
     def check_move(self, player_id: str, word: str, card_index: int) -> dict:
@@ -234,6 +241,12 @@ class WordBasketGame:
         
         card = player.hand[card_index]
         word = word.strip()
+
+        # Validate input: only hiragana and katakana allowed
+        for char in word:
+            # Check if character is hiragana (ぁ-ん) or katakana (ァ-ヴ) or long vowel mark (ー)
+            if not (('\u3041' <= char <= '\u3096') or ('\u30A1' <= char <= '\u30F4') or char == '\u30FC' or char == 'ー'):
+                return {"valid": False, "message": "ひらがなまたはカタカナのみ使用できます"}
 
         if word.endswith("ーー"):
              return {"valid": False, "message": "伸ばし棒は連続して使えません"}
