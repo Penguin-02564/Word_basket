@@ -62,13 +62,14 @@ renderHand = function () {
     const overlap = 60; // 60px overlap for each card
     const cardWidth = 120;
 
-    // Calculate total width and center offset
-    const totalWidth = cardWidth + (totalCards - 1) * overlap;
-    const centerOffset = -totalWidth / 2 + cardWidth / 2;
+    // Calculate center offset - properly center the card group
+    const totalWidth = (totalCards - 1) * overlap + cardWidth;
+    const centerOffset = -totalWidth / 2;
 
     state.hand.forEach((card, index) => {
         const cardEl = document.createElement('div');
         cardEl.className = 'card';
+        cardEl.dataset.index = index; // Store index for hover effects
 
         const isSelected = index === state.selectedCardIndex;
         if (isSelected) {
@@ -95,6 +96,20 @@ renderHand = function () {
         // Use SVG for card content
         cardEl.innerHTML = createCardSVG(card);
 
+        // Hover effect - separate cards
+        cardEl.addEventListener('mouseenter', (e) => {
+            if (state.selectedCardIndex === -1) { // Only if nothing is selected
+                const hoverIndex = parseInt(e.currentTarget.dataset.index);
+                updateCardPositionsOnHover(hoverIndex);
+            }
+        });
+
+        cardEl.addEventListener('mouseleave', () => {
+            if (state.selectedCardIndex === -1) { // Only if nothing is selected
+                updateCardPositionsOnHover(null);
+            }
+        });
+
         cardEl.addEventListener('click', () => selectCard(index));
         els.hand.appendChild(cardEl);
     });
@@ -104,5 +119,36 @@ renderHand = function () {
         highlightAutoSelectedCard(els.wordInput.value);
     }
 };
+
+// Update card positions based on hover
+function updateCardPositionsOnHover(hoverIndex) {
+    const cards = els.hand.querySelectorAll('.card');
+    const totalCards = cards.length;
+    const overlap = 60;
+    const cardWidth = 120;
+    const totalWidth = (totalCards - 1) * overlap + cardWidth;
+    const centerOffset = -totalWidth / 2;
+
+    cards.forEach((cardEl, index) => {
+        let offset = centerOffset + index * overlap;
+
+        if (hoverIndex !== null) {
+            if (index < hoverIndex) {
+                offset -= 30;
+            } else if (index > hoverIndex) {
+                offset += 30;
+            }
+        }
+
+        cardEl.style.left = `calc(50% + ${offset}px)`;
+
+        // Update z-index for hover
+        if (index === hoverIndex) {
+            cardEl.style.zIndex = 101;
+        } else {
+            cardEl.style.zIndex = index + 1;
+        }
+    });
+}
 
 console.log("Card SVG and overlapping layout loaded");
