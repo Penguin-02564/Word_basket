@@ -525,66 +525,85 @@ button:active {
 }
 
 .hand {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    justify-items: center;
-    max-width: 600px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    position: relative;
+    height: 220px;
     margin: 0 auto;
-}
-
-.hand.two-rows {
-    grid-auto-flow: row;
+    max-width: 100%;
 }
 
 .card {
-    background: var(--card-bg);
-    border-radius: 10px;
-    padding: 12px 5px;
-    text-align: center;
-    box-shadow: var(--card-shadow);
+    position: absolute;
+    background: linear-gradient(135deg, #f5f5dc 0%, #faf9f5 100%);
+    border-radius: 12px;
+    border: 3px solid #d4a574;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 3px rgba(255, 255, 255, 0.3);
     cursor: pointer;
-    transition: all 0.2s ease;
-    border: 2px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    width: 120px;
+    height: 168px;
+    transform-origin: bottom center;
+}
+
+.card svg {
     width: 100%;
-    max-width: 70px;
-    aspect-ratio: 0.75;
+    height: 100%;
+    pointer-events: none;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--card-hover-shadow);
+    transform: translateY(-30px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    z-index: 100 !important;
 }
 
 .card.selected {
+    transform: translateY(-40px) scale(1.05);
     border-color: var(--primary-color);
-    background-color: #eef6ff;
-    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(74, 144, 226, 0.4);
+    z-index: 101 !important;
 }
 
 .card.auto-selected {
+    transform: translateY(-40px) scale(1.05);
     border-color: #2ecc71;
-    background-color: #e8f8f0;
-    transform: translateY(-8px);
-    box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+    box-shadow: 0 15px 30px rgba(46, 204, 113, 0.5), 0 0 20px rgba(46, 204, 113, 0.3);
+    z-index: 101 !important;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 15px 30px rgba(46, 204, 113, 0.5), 0 0 20px rgba(46, 204, 113, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 15px 30px rgba(46, 204, 113, 0.7), 0 0 30px rgba(46, 204, 113, 0.5);
+    }
 }
 
 .card-value {
     font-family: var(--font-rounded);
-    font-size: 1.4rem;
+    font-size: 2.2rem;
     font-weight: 800;
-    color: var(--text-color);
+    color: #2c3e50;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .card-type {
-    font-size: 0.6rem;
-    color: #999;
-    margin-top: 5px;
+    font-size: 0.7rem;
+    color: #666;
+    margin-top: 8px;
+    font-weight: 600;
 }
 
 /* Responsive card size */
@@ -945,23 +964,20 @@ button:active {
 
     /* Hand/Cards */
     .hand {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px;
+        height: 180px;
     }
 
     .card {
-        width: 100%;
-        max-width: none;
-        aspect-ratio: 0.75;
-        padding: 8px 3px;
+        width: 100px;
+        height: 140px;
     }
 
     .card-value {
-        font-size: 1.1rem;
+        font-size: 1.8rem;
     }
 
     .card-type {
-        font-size: 0.5rem;
+        font-size: 0.6rem;
     }
 
     /* Voting Modal */
