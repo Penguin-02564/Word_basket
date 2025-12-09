@@ -15,8 +15,31 @@
 
 <body>
     <div class="app-container">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <header>
+                <h1>Word Basket Online</h1>
+            </header>
+            <div class="home-content">
+                <div class="home-buttons">
+                    <button id="how-to-play-btn" class="home-btn">
+                        📖 遊び方
+                    </button>
+                    <button id="single-play-btn" class="home-btn primary">
+                        🎮 シングルプレイ
+                    </button>
+                    <button id="multi-play-btn" class="home-btn primary">
+                        👥 マルチプレイ
+                    </button>
+                    <button id="settings-btn-home" class="home-btn">
+                        ⚙️ 設定
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Lobby Screen -->
-        <div id="lobby-screen" class="screen active">
+        <div id="lobby-screen" class="screen">
             <header>
                 <h1>Word Basket Online</h1>
             </header>
@@ -83,8 +106,8 @@
                 </button>
                 <h1>Word Basket</h1>
                 <div class="header-buttons">
-                    <button id="oppose-btn" class="danger-btn hidden">拒否！</button>
-                    <button id="approve-btn" class="success-btn hidden">承諾！</button>
+                    <button id="oppose-btn" class="danger-btn hidden">拒否</button>
+                    <button id="approve-btn" class="success-btn hidden">承諾</button>
                     <button id="reroll-btn" class="secondary-btn">🔄 手札交換</button>
                     <button id="disconnect-game-btn" class="secondary-btn">切断</button>
                 </div>
@@ -164,6 +187,42 @@
         </div>
     </div>
 
+
+    <!-- How to Play Modal -->
+    <div id="how-to-play-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>遊び方</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>ゲームの目的</h3>
+                <p>7枚の手札を先に使い切ったプレイヤーが勝ちです。</p>
+
+                <h3>基本ルール</h3>
+                <ul>
+                    <li>現在の単語の最後の文字から始まる単語を作ります</li>
+                    <li>手札のカードと一致する条件を満たす単語を入力</li>
+                    <li>「ん」で終わる単語は使えません</li>
+                    <li>3文字以上の単語が必要（最後の1枚は4文字以上）</li>
+                </ul>
+
+                <h3>カードの種類</h3>
+                <ul>
+                    <li><strong>文字カード</strong>: その文字で終わる単語</li>
+                    <li><strong>行カード</strong>: その行の文字で終わる単語（例: あ行 → あ、い、う、え、お）</li>
+                    <li><strong>文字数カード</strong>: 指定の文字数の単語</li>
+                </ul>
+
+                <h3>特殊ルール</h3>
+                <ul>
+                    <li>長音「ー」で終わる場合、その前の文字の母音から始める</li>
+                    <li>濁点・半濁点は元の文字として扱われます（例: 「ぐ」→「く」から）</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
@@ -195,6 +254,24 @@
                 </div>
 
                 <div class="settings-section">
+                    <h3>表示設定</h3>
+                    <div class="setting-item">
+                        <label for="font-size-select">文字サイズ</label>
+                        <select id="font-size-select">
+                            <option value="small">小</option>
+                            <option value="medium" selected>中</option>
+                            <option value="large">大</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="compact-layout-toggle">
+                            コンパクトレイアウト
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
                     <h3>その他</h3>
                     <div class="auto-select-toggle">
                         <label>
@@ -208,6 +285,7 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="home.js"></script>
 </body>
 
 </html>
