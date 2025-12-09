@@ -372,7 +372,8 @@ function updateGameState(data) {
 
         els.currentWord.textContent = data.current_word;
         els.targetChar.textContent = data.target_char;
-        els.deckCount.textContent = data.deck_count;
+        // デバッグ用: 山札/場の札枚数を表示
+        els.deckCount.textContent = `${data.deck_count}/${data.discard_pile_count || 0}`;
         els.handCount.textContent = state.hand.length;
 
         renderHand();

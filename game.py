@@ -144,9 +144,12 @@ class WordBasketGame:
         for player in self.players.values():
             player.hand = [self.deck.pop() for _ in range(7)]
         
+        
         # Draw a card from deck for starting character
         if self.deck:
             start_card = self.deck.pop()
+            # Add to discard pile
+            self.discard_pile.append(start_card)
             # Use the first character of the card value
             start_char = start_card.value[0] if start_card.value else random.choice("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ")
         else:
@@ -317,6 +320,10 @@ class WordBasketGame:
             played_card = player.hand[card_index]
             
             player.hand.pop(card_index)
+            
+            # Add used card to discard pile
+            self.discard_pile.append(played_card)
+            
             self.current_word = word
             
             # Store revert state
@@ -648,38 +655,54 @@ class WordBasketGame:
         if not (0 <= card_index < len(player.hand)):
             return {"success": False, "message": "無効なカードです"}
 
-        # 1. Get selected card
+        # 1. Get selected card and original hand size
         selected_card = player.hand.pop(card_index)
-        original_hand_size = len(player.hand) + 1
+        original_hand_size = len(player.hand) + 1  # Before pop
 
         # 2. Determine new target
         new_target_char = ""
         if selected_card.type == "char":
             new_target_char = selected_card.value
         elif selected_card.type == "row":
-            # Pick random char from row
             new_target_char = random.choice(selected_card.value)
         elif selected_card.type == "length":
-            # Keep current target
             new_target_char = self.get_target_char()
 
         self.current_word = "リロード_" + new_target_char
 
-        # 3. Return remaining hand to deck
-        self.deck.extend(player.hand)
-        player.hand = []
-        random.shuffle(self.deck)
-        
-        # 4. Draw new hand (original + 1)
+        # 3. Calculate cards to draw
         num_to_draw = original_hand_size + 1
         
+        # 4. Reshuffle if needed BEFORE adding cards to discard pile
+        if len(self.deck) < num_to_draw and len(self.discard_pile) > 1:
+            self._reshuffle_if_needed()
+        
+        # 5. Add all cards to discard pile (selected card on top)
+        self.discard_pile.append(selected_card)
+        self.discard_pile.extend(player.hand)
+        player.hand = []
+        
+        # 6. Draw new hand
         if len(self.deck) < num_to_draw:
-             # Not enough cards? Just draw what we can.
              num_to_draw = len(self.deck)
         
         player.hand = [self.deck.pop() for _ in range(num_to_draw)]
         
         return {"success": True, "message": f"手札を交換しました（{num_to_draw}枚）"}
+    
+    def _reshuffle_if_needed(self):
+        """場の札をシャッフルして山札に追加（一番上のカードは残す）"""
+        if len(self.discard_pile) > 1:
+            # Keep the most recent card (top of discard pile)
+            most_recent = self.discard_pile[-1]
+            
+            # Shuffle all other cards into deck
+            cards_to_shuffle = self.discard_pile[:-1]
+            self.deck.extend(cards_to_shuffle)
+            random.shuffle(self.deck)
+            
+            # Keep only the most recent card in discard pile
+            self.discard_pile = [most_recent]
     
     def get_opponent_hand(self, viewer_id: str, target_id: str) -> dict:
         """上がったプレイヤーが他のプレイヤーの手札を見る"""

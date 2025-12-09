@@ -334,6 +334,7 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
         "current_word": game.current_word,
         "target_char": game.get_target_char(),
         "deck_count": len(game.deck),
+        "discard_pile_count": len(game.discard_pile),  # デバッグ用
         "dictionary_size": len(game.dictionary),
         "message": message,
         "game_over": game_over,
