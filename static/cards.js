@@ -74,25 +74,40 @@ renderHand = function () {
         cardEl.dataset.index = index; // Store index for hover effects
 
         const isSelected = index === state.selectedCardIndex;
+        const isAutoSelected = cardEl.classList.contains('auto-selected');
+
         if (isSelected) {
             cardEl.classList.add('selected');
         }
 
-        // Position cards with overlap and separation when selected
+        // Position cards with overlap and separation when selected or auto-selected
         let offset = centerOffset + index * overlap;
 
-        // If a card is selected, push cards to the left and right
+        // Find auto-selected card index
+        let autoSelectedIndex = -1;
+        if (!isSelected && state.autoSelect && els.wordInput?.value) {
+            // Check if this card is auto-selected by checking the current hand
+            state.hand.forEach((c, i) => {
+                if (i === index && cardEl.classList.contains('auto-selected')) {
+                    autoSelectedIndex = i;
+                }
+            });
+        }
+
+        // If a card is selected or auto-selected, push cards to the left and right
         const shiftAmount = isMobile ? 20 : 30; // Smaller shift on mobile
-        if (state.selectedCardIndex !== -1) {
-            if (index < state.selectedCardIndex) {
+        const activeIndex = state.selectedCardIndex !== -1 ? state.selectedCardIndex : autoSelectedIndex;
+
+        if (activeIndex !== -1) {
+            if (index < activeIndex) {
                 offset -= shiftAmount;
-            } else if (index > state.selectedCardIndex) {
+            } else if (index > activeIndex) {
                 offset += shiftAmount;
             }
         }
 
         cardEl.style.left = `calc(50% + ${offset}px)`;
-        cardEl.style.zIndex = isSelected ? 102 : index + 1;
+        cardEl.style.zIndex = (isSelected || isAutoSelected) ? 102 : index + 1;
 
         // Use SVG for card content
         cardEl.innerHTML = createCardSVG(card);

@@ -39,6 +39,7 @@ class WordBasketGame:
     def __init__(self, room_code: str, dictionary_path: str = None):
         self.room_code = room_code
         self.deck: List[Card] = []
+        self.discard_pile: List[Card] = []  # 場の札
         self.players: Dict[str, Player] = {}
         self.current_word: str = ""
         self.dictionary: Set[str] = set()
@@ -143,7 +144,15 @@ class WordBasketGame:
         for player in self.players.values():
             player.hand = [self.deck.pop() for _ in range(7)]
         
-        start_char = random.choice("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ")
+        # Draw a card from deck for starting character
+        if self.deck:
+            start_card = self.deck.pop()
+            # Use the first character of the card value
+            start_char = start_card.value[0] if start_card.value else random.choice("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ")
+        else:
+            # Fallback if deck is empty
+            start_char = random.choice("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ")
+        
         self.current_word = "ゲーム開始_" + start_char
         self.status = "playing"
         self.finished_players = []

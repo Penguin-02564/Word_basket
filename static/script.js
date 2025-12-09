@@ -69,7 +69,8 @@ let state = {
     autoSelect: false,
     cardPriority: ['char', 'row', 'length'],
     reconnectTimer: null,
-    finishingCountdown: null // Timer for countdown display
+    finishingCountdown: null, // Timer for countdown display
+    isOpposing: false // Toggle state for opposition
 };
 
 // --- Initialization ---
@@ -265,18 +266,31 @@ function sendReroll() {
         alert("交換するカードを選択してください");
         return;
     }
-    if (confirm("選択したカードを消費して手札を交換しますか？（手札が1枚増えます）")) {
-        state.ws.send(JSON.stringify({
-            action: "reroll",
-            card_index: state.selectedCardIndex
-        }));
-        state.selectedCardIndex = -1; // Reset selection
-        renderHand();
-    }
+    state.ws.send(JSON.stringify({
+        action: "reroll",
+        card_index: state.selectedCardIndex
+    }));
+    state.selectedCardIndex = -1; // Reset selection
+    renderHand();
 }
 
+
 function sendOppose() {
-    if (confirm("この手を拒否しますか？")) {
+    // Toggle opposition state
+    state.isOpposing = !state.isOpposing;
+
+    // Update button appearance
+    const opposeBtn = document.getElementById('oppose-btn');
+    if (state.isOpposing) {
+        opposeBtn.classList.add('toggled');
+        opposeBtn.textContent = '拒否中';
+    } else {
+        opposeBtn.classList.remove('toggled');
+        opposeBtn.textContent = '拒否';
+    }
+
+    // Send action if opposing
+    if (state.isOpposing) {
         state.ws.send(JSON.stringify({ action: "oppose" }));
     }
 }
@@ -301,7 +315,7 @@ function disconnectAndReturnToTitle() {
             state.ws = null;
         }
         clearPlayerState();
-        showScreen('lobby-screen');
+        showScreen('home-screen');
     }
 }
 
@@ -325,6 +339,16 @@ function updateGameState(data) {
     // Save player ID for reconnection
     if (state.playerId) {
         savePlayerState();
+    }
+
+    // Reset opposition toggle on new word
+    if (data.current_word && state.isOpposing) {
+        state.isOpposing = false;
+        const opposeBtn = document.getElementById('oppose-btn');
+        if (opposeBtn) {
+            opposeBtn.classList.remove('toggled');
+            opposeBtn.textContent = '拒否';
+        }
     }
 
     // Update Waiting Screen
