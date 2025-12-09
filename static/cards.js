@@ -59,8 +59,10 @@ renderHand = function () {
     const totalCards = state.hand.length;
     if (totalCards === 0) return;
 
-    const overlap = 60; // 60px overlap for each card
-    const cardWidth = 120;
+    // Detect mobile
+    const isMobile = window.innerWidth <= 768;
+    const overlap = isMobile ? 40 : 60; // Comfortable overlap on mobile
+    const cardWidth = isMobile ? 80 : 120; // Smaller cards on mobile
 
     // Calculate center offset - properly center the card group
     const totalWidth = (totalCards - 1) * overlap + cardWidth;
@@ -80,13 +82,12 @@ renderHand = function () {
         let offset = centerOffset + index * overlap;
 
         // If a card is selected, push cards to the left and right
+        const shiftAmount = isMobile ? 20 : 30; // Smaller shift on mobile
         if (state.selectedCardIndex !== -1) {
             if (index < state.selectedCardIndex) {
-                // Cards to the left: shift more to the left
-                offset -= 30;
+                offset -= shiftAmount;
             } else if (index > state.selectedCardIndex) {
-                // Cards to the right: shift more to the right
-                offset += 30;
+                offset += shiftAmount;
             }
         }
 
@@ -96,19 +97,21 @@ renderHand = function () {
         // Use SVG for card content
         cardEl.innerHTML = createCardSVG(card);
 
-        // Hover effect - separate cards
-        cardEl.addEventListener('mouseenter', (e) => {
-            if (state.selectedCardIndex === -1) { // Only if nothing is selected
-                const hoverIndex = parseInt(e.currentTarget.dataset.index);
-                updateCardPositionsOnHover(hoverIndex);
-            }
-        });
+        // Hover effect - separate cards (only on non-mobile)
+        if (!isMobile) {
+            cardEl.addEventListener('mouseenter', (e) => {
+                if (state.selectedCardIndex === -1) {
+                    const hoverIndex = parseInt(e.currentTarget.dataset.index);
+                    updateCardPositionsOnHover(hoverIndex);
+                }
+            });
 
-        cardEl.addEventListener('mouseleave', () => {
-            if (state.selectedCardIndex === -1) { // Only if nothing is selected
-                updateCardPositionsOnHover(null);
-            }
-        });
+            cardEl.addEventListener('mouseleave', () => {
+                if (state.selectedCardIndex === -1) {
+                    updateCardPositionsOnHover(null);
+                }
+            });
+        }
 
         cardEl.addEventListener('click', () => selectCard(index));
         els.hand.appendChild(cardEl);
