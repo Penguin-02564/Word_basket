@@ -145,15 +145,17 @@ class WordBasketGame:
             player.hand = [self.deck.pop() for _ in range(7)]
         
         
-        # Draw a card from deck for starting character
-        if self.deck:
-            start_card = self.deck.pop()
-            # Add to discard pile
+        
+        # Draw a char card from deck for starting character
+        char_cards = [card for card in self.deck if card.type == "char"]
+        if char_cards:
+            start_card = random.choice(char_cards)
+            # Remove from deck and add to discard pile
+            self.deck.remove(start_card)
             self.discard_pile.append(start_card)
-            # Use the first character of the card value
-            start_char = start_card.value[0] if start_card.value else random.choice("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ")
+            start_char = start_card.value
         else:
-            # Fallback if deck is empty
+            # Fallback if no char cards available
             start_char = random.choice("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ")
         
         self.current_word = "ゲーム開始_" + start_char

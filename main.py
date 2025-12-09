@@ -241,16 +241,18 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
     except WebSocketDisconnect:
         manager.disconnect(room_code, player_id)
         
-        if player.is_host:
-            # Host disconnected, end the game for everyone
+        # Remove player from game if not started yet
+        if game.status == "waiting":
+            game.remove_player(player_id)
+            await broadcast_game_state(game, room_code, message=f"{player.name}さんが退出しました")
+        elif player.is_host:
+            # Host disconnected during game, end the game for everyone
             await manager.broadcast({
                 "type": "return_to_title",
                 "message": "ホストが切断しました。タイトルに戻ります。"
             }, room_code)
-            # Optionally clean up the room immediately or let it be
-            # For now, we just notify everyone.
         else:
-            # Normal player disconnected
+            # Normal player disconnected during game (remain in players list for reconnection)
             await broadcast_game_state(game, room_code, message=f"{player.name}さんが切断しました")
 
 async def voting_timeout(game: WordBasketGame, room_code: str, timeout_seconds: int):

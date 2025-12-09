@@ -977,8 +977,8 @@ button:active {
         display: flex !important;
         flex-direction: column !important;
         justify-content: flex-start !important;
-        gap: 6px;
-        padding: 10px 0;
+        gap: 2px;
+        padding: 3px 0;
         background: transparent !important;
         box-shadow: none !important;
         align-items: flex-start;
@@ -986,7 +986,7 @@ button:active {
 
     .status-item {
         background: #f8f9fa;
-        padding: 6px;
+        padding: 3px 6px;
         border-radius: 6px;
         font-size: 0.7rem;
         width: auto;
@@ -1007,17 +1007,19 @@ button:active {
     }
 
     .status-item .value {
-        font-size: 1rem;
+        font-size: 0.75rem;
         font-weight: bold;
     }
 
     /* Game Info */
     .word-display {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
+        margin-bottom: 5px;
     }
 
     .next-char-hint {
         font-size: 1rem;
+        margin-top: 8px;
     }
 
     #target-char {
@@ -1025,6 +1027,15 @@ button:active {
     }
 
     /* Play Area */
+    .message {
+        margin-bottom: 5px;
+    }
+
+    .play-area {
+        margin-top: 0;
+        gap: 5px;
+    }
+
     .input-group {
         display: flex;
         flex-direction: row;
@@ -1047,6 +1058,10 @@ button:active {
     }
 
     /* Hand/Cards */
+    .hand-container {
+        margin-top: 0;
+    }
+
     .hand-label {
         display: none;
     }
@@ -1054,6 +1069,8 @@ button:active {
     .hand {
         height: 140px;
         margin-top: 0;
+        align-items: center;
+        padding-top: 10px;
     }
 
     .card {

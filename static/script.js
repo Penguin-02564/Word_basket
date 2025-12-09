@@ -22,6 +22,7 @@ const els = {
     currentWord: document.getElementById('current-word'),
     targetChar: document.getElementById('target-char'),
     deckCount: document.getElementById('deck-count'),
+    discardCount: document.getElementById('discard-count'),
     handCount: document.getElementById('hand-count'),
     wordInput: document.getElementById('word-input'),
     submitBtn: document.getElementById('submit-btn'),
@@ -370,10 +371,11 @@ function updateGameState(data) {
             showScreen('game-screen');
         }
 
+
         els.currentWord.textContent = data.current_word;
         els.targetChar.textContent = data.target_char;
-        // デバッグ用: 山札/場の札枚数を表示
-        els.deckCount.textContent = `${data.deck_count}/${data.discard_pile_count || 0}`;
+        els.deckCount.textContent = data.deck_count;
+        els.discardCount.textContent = data.discard_pile_count || 0;
         els.handCount.textContent = state.hand.length;
 
         renderHand();
