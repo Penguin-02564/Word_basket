@@ -222,6 +222,21 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                 game.set_card_priority(player_id, priority)
                 # No broadcast needed, just personal update maybe?
                 await broadcast_game_state(game, room_code) # Update to reflect priority if we send it back
+            
+            elif action == "get_hand":
+                target_id = data.get("target_id")
+                if not target_id:
+                    await manager.send_personal_message({"type": "error", "message": "対象プレイヤーが指定されていません"}, websocket)
+                else:
+                    result = game.get_opponent_hand(player_id, target_id)
+                    if result["success"]:
+                        await manager.send_personal_message({
+                            "type": "view_hand",
+                            "target_name": result["target_name"],
+                            "hand": result["hand"]
+                        }, websocket)
+                    else:
+                        await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
 
     except WebSocketDisconnect:
         manager.disconnect(room_code, player_id)

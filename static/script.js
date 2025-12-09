@@ -228,6 +228,8 @@ function connectWebSocket() {
 }
 
 function handleMessage(data) {
+    console.log("Received message:", data.type, data);
+
     if (data.type === 'game_state') {
         updateGameState(data);
     } else if (data.type === 'error') {
@@ -240,6 +242,9 @@ function handleMessage(data) {
             state.ws.close();
             state.ws = null;
         }
+    } else if (data.type === 'view_hand') {
+        console.log("Received view_hand message");
+        showHandViewerModal(data.target_name, data.hand);
     }
 }
 
@@ -465,10 +470,22 @@ function renderOpponents(players) {
         if (p.player_id !== state.playerId) {
             const div = document.createElement('div');
             div.className = 'opponent-card';
+
             div.innerHTML = `
                 <div class="name">${p.name} ${p.rank ? `(${p.rank}位)` : ''}</div>
                 <div class="count">${p.rank ? '🎉' : '🎴 ' + p.hand_count}</div>
             `;
+
+            // Check if current player is finished
+            const currentPlayer = players.find(player => player.player_id === state.playerId);
+            if (currentPlayer && currentPlayer.rank) {
+                // Current player is finished, allow clicking to view hands
+                div.style.cursor = 'pointer';
+                div.addEventListener('click', () => {
+                    requestOpponentHand(p.player_id);
+                });
+            }
+
             els.opponentsArea.appendChild(div);
         }
     });
@@ -745,6 +762,60 @@ function updatePriorityFromDOM() {
     state.cardPriority = newPriority;
     saveSettings();
 }
+
+// Hand Viewer functions
+function requestOpponentHand(targetPlayerId) {
+    console.log("Requesting opponent hand for player ID:", targetPlayerId);
+    console.log("WebSocket state:", state.ws ? state.ws.readyState : "null");
+
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        console.error("WebSocket is not open");
+        alert("接続エラー: WebSocketが開いていません");
+        return;
+    }
+
+    try {
+        state.ws.send(JSON.stringify({
+            action: "get_hand",
+            target_id: targetPlayerId
+        }));
+        console.log("Sent get_hand request");
+    } catch (error) {
+        console.error("Error sending request:", error);
+    }
+}
+
+function showHandViewerModal(playerName, hand) {
+    const modal = document.getElementById('hand-viewer-modal');
+    const playerNameEl = document.getElementById('hand-viewer-player-name');
+    const viewedHandEl = document.getElementById('viewed-hand');
+
+    playerNameEl.textContent = playerName + 'の手札';
+
+    // Clear previous cards
+    viewedHandEl.innerHTML = '';
+
+    // Render cards
+    hand.forEach(card => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'viewed-card';
+        cardEl.innerHTML = createCardSVG ? createCardSVG(card) : `
+            <div class="card-value">${card.display}</div>
+            <div class="card-type">${card.type}</div>
+        `;
+        viewedHandEl.appendChild(cardEl);
+    });
+
+    modal.style.display = 'flex';
+}
+
+function closeHandViewerModal() {
+    const modal = document.getElementById('hand-viewer-modal');
+    modal.style.display = 'none';
+}
+
+// Event listener for closing hand viewer modal
+document.getElementById('close-hand-viewer').addEventListener('click', closeHandViewerModal);
 
 function clearAutoSelection() {
     const cards = document.querySelectorAll('.card');

@@ -671,6 +671,28 @@ class WordBasketGame:
         player.hand = [self.deck.pop() for _ in range(num_to_draw)]
         
         return {"success": True, "message": f"手札を交換しました（{num_to_draw}枚）"}
+    
+    def get_opponent_hand(self, viewer_id: str, target_id: str) -> dict:
+        """上がったプレイヤーが他のプレイヤーの手札を見る"""
+        viewer = self.players.get(viewer_id)
+        target = self.players.get(target_id)
+        
+        if not viewer:
+            return {"success": False, "message": "プレイヤーが見つかりません"}
+        
+        if viewer.rank is None:
+            return {"success": False, "message": "上がっていないプレイヤーは他の手札を見ることができません"}
+        
+        if not target:
+            return {"success": False, "message": "対象プレイヤーが見つかりません"}
+        
+        hand_data = [{"type": card.type, "value": card.value, "display": card.display} for card in target.hand]
+        
+        return {
+            "success": True,
+            "target_name": target.name,
+            "hand": hand_data
+        }
 
 class GameManager:
     def __init__(self):
