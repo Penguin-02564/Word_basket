@@ -207,6 +207,27 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                 else:
                     await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
             
+            elif action == "rematch":
+                player = game.players.get(player_id)
+                if player:
+                    result = game.request_rematch(player_id)
+                    if result["success"]:
+                        if result["all_voted"]:
+                            # All players voted, start game
+                            game.start_game()
+                            await broadcast_game_state(game, room_code, message=result["message"])
+                        else:
+                            # Waiting for more votes - send message only, don't change screen
+                            for pid, ws in manager.active_connections.get(room_code, {}).items():
+                                await manager.send_personal_message({
+                                    "type": "rematch_vote",
+                                    "message": result["message"],
+                                    "votes": len(game.rematch_votes),
+                                    "total": len(game.players)
+                                }, ws)
+                    else:
+                        await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
             elif action == "oppose":
                 result = game.oppose_move(player_id)
                 if result["success"]:

@@ -55,7 +55,8 @@ const els = {
     // Result
     resultScreen: document.getElementById('result-screen'),
     resultList: document.getElementById('result-list'),
-    backToLobbyBtn: document.getElementById('back-to-lobby-btn')
+    backToLobbyBtn: document.getElementById('back-to-lobby-btn'),
+    rematchBtn: document.getElementById('rematch-btn')
 };
 
 // State
@@ -116,6 +117,14 @@ function setupEventListeners() {
         if (state.ws) {
             state.ws.close();
             state.ws = null;
+        }
+    });
+
+    els.rematchBtn.addEventListener('click', () => {
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+            state.ws.send(JSON.stringify({ action: "rematch" }));
+            els.rematchBtn.disabled = true;
+            els.rematchBtn.textContent = "待機中...";
         }
     });
 
@@ -247,6 +256,10 @@ function handleMessage(data) {
     } else if (data.type === 'view_hand') {
         console.log("Received view_hand message");
         showHandViewerModal(data.target_name, data.hand);
+    } else if (data.type === 'rematch_vote') {
+        // Update rematch button text with vote count
+        els.rematchBtn.textContent = `もう一度遊ぶ (${data.votes}/${data.total})`;
+        showMessage(data.message, false);
     }
 }
 
@@ -452,8 +465,20 @@ function updateGameState(data) {
             // Hide voting modal when game is over
             els.votingModal.classList.add('hidden');
 
+
+
             renderResultScreen(data.ranks);
             showScreen('result-screen');
+
+            // Show rematch button for multiplayer
+            if (!state.isSinglePlay) {
+                els.rematchBtn.style.display = 'inline-block';
+                // Reset rematch button state
+                els.rematchBtn.disabled = false;
+                els.rematchBtn.textContent = 'もう一度遊ぶ';
+            } else {
+                els.rematchBtn.style.display = 'none';
+            }
 
             // Hide back button for non-hosts
             if (state.isHost) {
@@ -601,9 +626,44 @@ function findBestCardIndex(word) {
         return map[char] || char;
     };
 
+    // Helper to get vowel
+    const getVowel = (char) => {
+        const vowelMap = {
+            // あ行
+            'あ': 'あ', 'い': 'い', 'う': 'う', 'え': 'え', 'お': 'お',
+            // か行
+            'か': 'あ', 'き': 'い', 'く': 'う', 'け': 'え', 'こ': 'お',
+            'が': 'あ', 'ぎ': 'い', 'ぐ': 'う', 'げ': 'え', 'ご': 'お',
+            // さ行
+            'さ': 'あ', 'し': 'い', 'す': 'う', 'せ': 'え', 'そ': 'お',
+            'ざ': 'あ', 'じ': 'い', 'ず': 'う', 'ぜ': 'え', 'ぞ': 'お',
+            // た行
+            'た': 'あ', 'ち': 'い', 'つ': 'う', 'て': 'え', 'と': 'お',
+            'だ': 'あ', 'ぢ': 'い', 'づ': 'う', 'で': 'え', 'ど': 'お',
+            // な行
+            'な': 'あ', 'に': 'い', 'ぬ': 'う', 'ね': 'え', 'の': 'お',
+            // は行
+            'は': 'あ', 'ひ': 'い', 'ふ': 'う', 'へ': 'え', 'ほ': 'お',
+            'ば': 'あ', 'び': 'い', 'ぶ': 'う', 'べ': 'え', 'ぼ': 'お',
+            'ぱ': 'あ', 'ぴ': 'い', 'ぷ': 'う', 'ぺ': 'え', 'ぽ': 'お',
+            // ま行
+            'ま': 'あ', 'み': 'い', 'む': 'う', 'め': 'え', 'も': 'お',
+            // や行
+            'や': 'あ', 'ゆ': 'う', 'よ': 'お',
+            // ら行
+            'ら': 'あ', 'り': 'い', 'る': 'う', 'れ': 'え', 'ろ': 'お',
+            // わ行
+            'わ': 'あ', 'を': 'お'
+        };
+        return vowelMap[char] || char;
+    };
+
     let effectiveEnd = word.slice(-1);
     if (word.endsWith('ー') && word.length > 1) {
-        effectiveEnd = word.slice(-2, -1);
+        // Get the character before the long vowel mark
+        const prevChar = word.slice(-2, -1);
+        // Get the vowel of that character
+        effectiveEnd = getVowel(prevChar);
     }
     const normEnd = normalize(effectiveEnd);
 

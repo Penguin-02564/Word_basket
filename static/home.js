@@ -16,7 +16,10 @@ state.isSinglePlay = false;
 
 // Home screen event listeners
 els.howToPlayBtn.addEventListener('click', () => els.howToPlayModal.classList.add('active'));
-els.multiPlayBtn.addEventListener('click', () => showScreen('lobby-screen'));
+els.multiPlayBtn.addEventListener('click', () => {
+    state.isSinglePlay = false;
+    showScreen('lobby-screen');
+});
 els.settingsBtnHome.addEventListener('click', () => els.settingsModal.classList.add('active'));
 els.singlePlayBtn.addEventListener('click', startSinglePlay);
 

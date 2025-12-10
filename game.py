@@ -285,7 +285,10 @@ class WordBasketGame:
         valid_card = False
         effective_end = word[-1]
         if word.endswith("ー") and len(word) > 1:
-            effective_end = word[-2]
+            # Get the character before the long vowel mark
+            prev_char = word[-2]
+            # Get the vowel of that character
+            effective_end = self.get_vowel(prev_char)
         
         if card.type == "char":
             if self.normalize_kana(effective_end) == self.normalize_kana(card.value):
@@ -615,7 +618,10 @@ class WordBasketGame:
         
         effective_end = word[-1]
         if word.endswith("ー") and len(word) > 1:
-            effective_end = word[-2]
+            # Get the character before the long vowel mark
+            prev_char = word[-2]
+            # Get the vowel of that character
+            effective_end = self.get_vowel(prev_char)
         
         card_indices_by_type = {'char': [], 'row': [], 'length': []}
         
@@ -727,6 +733,42 @@ class WordBasketGame:
             "target_name": target.name,
             "hand": hand_data
         }
+
+    def request_rematch(self, player_id: str) -> dict:
+        """Request a rematch"""
+        if self.status != "finished":
+            return {"success": False, "message": "ゲームが終了していません"}
+        
+        if not hasattr(self, 'rematch_votes'):
+            self.rematch_votes = set()
+        
+        self.rematch_votes.add(player_id)
+        
+        # Check if all players voted for rematch
+        if len(self.rematch_votes) >= len(self.players):
+            # Reset game
+            self.reset_game()
+            return {"success": True, "all_voted": True, "message": "リマッチ開始！"}
+        
+        return {"success": True, "all_voted": False, "message": f"リマッチ投票: {len(self.rematch_votes)}/{len(self.players)}"}
+    
+    def reset_game(self):
+        """Reset game for rematch"""
+        # Reset all players
+        for player in self.players.values():
+            player.hand = []
+            player.rank = None
+        
+        # Reset game state
+        self.deck = []
+        self.discard_pile = []
+        self.current_word = ""
+        self.status = "waiting"
+        self.finished_players = []
+        self.opposition_votes = set()
+        self.approval_votes = set()
+        self.pending_revert_state = None
+        self.rematch_votes = set()
 
 class GameManager:
     def __init__(self):
