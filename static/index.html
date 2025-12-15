@@ -41,27 +41,68 @@
         <!-- Lobby Screen -->
         <div id="lobby-screen" class="screen">
             <header>
-                <h1>Word Basket Online</h1>
+                <h1>ワードバスケット</h1>
             </header>
             <div class="lobby-content">
-                <div class="input-group">
-                    <label>プレイヤー名</label>
-                    <input type="text" id="player-name-input" placeholder="名前を入力" maxlength="10">
-                </div>
-
                 <div class="lobby-actions">
                     <div class="action-box">
-                        <h3>ルームを作成</h3>
-                        <button id="create-room-btn" class="primary-btn">新規ルーム作成</button>
+                        <h3>新しいルームを作成</h3>
+                        <input type="text" id="host-name-input" placeholder="プレイヤー名を入力">
+
+                        <!-- 特殊カード設定 -->
+                        <div class="special-card-settings">
+                            <h4>特殊カード設定</h4>
+                            <div class="setting-row">
+                                <label>
+                                    <input type="checkbox" id="enable-special-cards" checked>
+                                    特殊カード機能を有効にする
+                                </label>
+                            </div>
+                            <div id="special-card-config" class="special-card-config">
+                                <div class="setting-row">
+                                    <label>プレイヤーあたりの枚数:</label>
+                                    <input type="number" id="cards-per-player" min="0" max="5" value="2">
+                                </div>
+                                <div class="card-type-settings">
+                                    <div class="card-type-item">
+                                        <label>ドロー2:</label>
+                                        <input type="number" id="draw2-count" min="0" max="10" value="3">
+                                    </div>
+                                    <div class="card-type-item">
+                                        <label>ドロー3:</label>
+                                        <input type="number" id="draw3-count" min="0" max="10" value="2">
+                                    </div>
+                                    <div class="card-type-item">
+                                        <label>デュアルワード:</label>
+                                        <input type="number" id="dual-word-count" min="0" max="10" value="3">
+                                    </div>
+                                    <div class="card-type-item">
+                                        <label>ノーペナルティ:</label>
+                                        <input type="number" id="no-penalty-count" min="0" max="10" value="6">
+                                    </div>
+                                    <div class="card-type-item">
+                                        <label>ローテートスワップ:</label>
+                                        <input type="number" id="rotate-swap-count" min="0" max="10" value="7">
+                                    </div>
+                                    <div class="card-type-item">
+                                        <label>セレクトスワップ:</label>
+                                        <input type="number" id="select-swap-count" min="0" max="10" value="4">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="create-room-btn" class="primary-btn">ルームを作成</button>
                     </div>
 
                     <div class="divider">または</div>
 
                     <div class="action-box">
-                        <h3>ルームに参加</h3>
+                        <h3>既存のルームに参加</h3>
+                        <input type="text" id="join-name-input" placeholder="プレイヤー名を入力">
                         <div class="join-input-group">
                             <input type="text" id="room-code-input" placeholder="ルームコード (4桁)" maxlength="4">
-                            <button id="join-room-btn" class="secondary-btn">参加</button>
+                            <button id="join-room-btn" class="primary-btn">参加</button>
                         </div>
                     </div>
                 </div>
@@ -87,6 +128,14 @@
                     </ul>
                 </div>
 
+                <!-- Game Settings Display -->
+                <div class="game-settings-display" id="game-settings-display">
+                    <h4>ゲーム設定</h4>
+                    <div id="settings-info" class="settings-info">
+                        <!-- Settings will be displayed here -->
+                    </div>
+                </div>
+
                 <div class="waiting-actions">
                     <button id="start-game-btn" class="primary-btn hidden">ゲーム開始</button>
                     <p id="waiting-message" class="message">ホストがゲームを開始するのを待っています...</p>
@@ -105,13 +154,15 @@
                     <span></span>
                 </button>
                 <h1>Word Basket</h1>
-                <div class="header-buttons">
-                    <button id="oppose-btn" class="danger-btn hidden">拒否</button>
-                    <button id="approve-btn" class="success-btn hidden">承諾</button>
-                    <button id="reroll-btn" class="secondary-btn">🔄 手札交換</button>
-                    <button id="disconnect-game-btn" class="secondary-btn">切断</button>
-                </div>
+                <button id="disconnect-game-btn" class="secondary-btn">切断</button>
             </header>
+
+            <!-- Game action buttons (moved outside header for grid layout) -->
+            <div class="header-buttons">
+                <button id="oppose-btn" class="danger-btn hidden">拒否</button>
+                <button id="approve-btn" class="success-btn hidden">承諾</button>
+                <button id="reroll-btn" class="secondary-btn">🔄 手札交換</button>
+            </div>
 
             <div class="game-info">
                 <!-- Opponents Area -->
@@ -119,9 +170,11 @@
                     <!-- Opponents info will be here -->
                 </div>
 
+
                 <div class="current-word-container">
                     <span class="label">現在の単語</span>
                     <div class="word-display" id="current-word">---</div>
+                    <div id="special-card-badge" class="special-card-badge" style="display: none;"></div>
                     <div class="next-char-hint">次は <span id="target-char">?</span> から！</div>
                 </div>
 
@@ -153,6 +206,17 @@
                 <div class="hand-label" id="hand-label">手札を選んでください</div>
                 <div id="hand" class="hand">
                     <!-- Cards will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Special Cards Area -->
+            <div class="special-cards-container">
+                <div class="special-cards-header">
+                    <span class="label">特殊カード</span>
+                    <span class="count" id="special-cards-count">0/0</span>
+                </div>
+                <div id="special-cards" class="special-cards">
+                    <!-- Special cards will be rendered here -->
                 </div>
             </div>
 
@@ -298,6 +362,25 @@
             </div>
             <div class="modal-body">
                 <div id="viewed-hand" class="viewed-hand"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Selection Modal (for Select Swap) -->
+    <div id="player-selection-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>交換相手を選択</h2>
+                <button class="close-btn" id="close-player-selection">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="player-selection-list" class="player-selection-list">
+                    <!-- Players will be added here -->
+                </div>
+                <div class="modal-actions">
+                    <button id="cancel-player-selection-btn" class="secondary-btn">キャンセル</button>
+                    <button id="confirm-player-selection-btn" class="primary-btn">決定</button>
+                </div>
             </div>
         </div>
     </div>

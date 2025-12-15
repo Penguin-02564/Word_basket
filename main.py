@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import FileResponse
 from pydantic import BaseModel
 from game import WordBasketGame, GameManager
 import os
@@ -64,14 +65,38 @@ class CreateRoomResponse(BaseModel):
 def health_check():
     return {"status": "healthy"}
 
-# Root endpoint
+# Serve index.html for the root path
+@app.get("/")
+async def read_root():
+    return FileResponse("static/index.html")
+
+# Serve index.html for the /game path
+@app.get("/game")
+async def read_game():
+    return FileResponse("static/index.html")
+
 @app.get("/api")
 def api_root():
     return {"message": "Word Basket API is running"}
 
 @app.post("/api/rooms")
-def create_room():
-    room_code = game_manager.create_room()
+async def create_room(request: dict = None):
+    """
+    Create a new room with optional custom settings.
+    Request body:
+    {
+        "settings": {
+            "initial_hand_size": 7,
+            "num_special_cards_per_player": 2,
+            "special_cards_enabled": {...}
+        }
+    }
+    """
+    settings = None
+    if request and "settings" in request:
+        settings = request["settings"]
+    
+    room_code = game_manager.create_room(settings)
     return {"room_code": room_code}
 
 @app.websocket("/ws/{room_code}/{player_name}")
@@ -258,6 +283,40 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                         }, websocket)
                     else:
                         await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
+            elif action == "set_special_card_pending":
+                card_index = data.get("card_index")
+                if card_index is None:
+                    await manager.send_personal_message({"type": "error", "message": "カードインデックスが指定されていません"}, websocket)
+                else:
+                    result = game.set_special_card_pending(player_id, card_index)
+                    if result["success"]:
+                        if result.get("immediate"):
+                            # 即時発動カード（ローテートスワップなど）
+                            await broadcast_game_state(game, room_code, message=result["message"])
+                        else:
+                            # 待機状態に設定
+                            await broadcast_game_state(game, room_code, message=result["message"])
+                    else:
+                        await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
+            elif action == "cancel_pending_special_card":
+                result = game.cancel_pending_special_card(player_id)
+                if result["success"]:
+                    await broadcast_game_state(game, room_code, message=result["message"])
+                else:
+                    await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
+            
+            elif action == "execute_select_swap":
+                target_player_id = data.get("target_player_id")
+                if not target_player_id:
+                    await manager.send_personal_message({"type": "error", "message": "対象プレイヤーが指定されていません"}, websocket)
+                else:
+                    result = game.execute_select_swap(player_id, target_player_id)
+                    if result["success"]:
+                        await broadcast_game_state(game, room_code, message=result["message"])
+                    else:
+                        await manager.send_personal_message({"type": "error", "message": result["message"]}, websocket)
 
     except WebSocketDisconnect:
         manager.disconnect(room_code, player_id)
@@ -367,6 +426,8 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
         "approval_votes": len(game.approval_votes),
         "active_players": len(game.players),
         "active_voting_players": active_voting_players,
+        "finishing_check": game.status == "finishing_check",
+        "game_settings": game.game_settings,  # ゲーム設定を追加
         "finishing_player_id": finishing_player_id
     }
     
@@ -391,6 +452,9 @@ async def broadcast_game_state(game: WordBasketGame, room_code: str, message: st
                 personal_state["is_host"] = player.is_host
                 personal_state["my_priority"] = player.card_priority
                 personal_state["has_voted"] = player_id in game.approval_votes or player_id in game.opposition_votes
+                # 特殊カード情報を追加
+                personal_state["my_special_cards"] = [sc.to_dict() for sc in player.special_cards]
+                personal_state["my_pending_special_card"] = player.pending_special_card.to_dict() if player.pending_special_card else None
                 
                 try:
                     await ws.send_json(personal_state)

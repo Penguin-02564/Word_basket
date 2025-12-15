@@ -1323,3 +1323,496 @@ button:active {
     color: #666;
     min-height: 24px;
 }
+
+/* === Special Cards Styles === */
+
+.special-cards-container {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 10px;
+}
+
+.special-cards-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.special-cards-header .count {
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.special-cards {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 5px 0;
+}
+
+.special-card {
+    min-width: 200px;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border: 3px solid #ff9800;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.special-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.special-card.pending {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(74, 144, 226, 0.5);
+}
+
+.special-card-name {
+    font-family: var(--font-rounded);
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #e65100;
+    margin-bottom: 5px;
+}
+
+.special-card.pending .special-card-name {
+    color: var(--primary-color);
+}
+
+.special-card-description {
+    font-size: 0.75rem;
+    color: #666;
+    line-height: 1.3;
+}
+
+.pending-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.no-special-cards {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 0.9rem;
+}
+
+/* Player Selection Modal */
+
+.player-selection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.player-selection-item {
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.player-selection-item:has(input:checked) {
+    background: #e3f2fd;
+    border-color: var(--primary-color);
+}
+
+.player-selection-item label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.player-selection-item input[type="radio"] {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.modal-actions button {
+    flex: 1;
+}
+
+/* Game Settings Display (Waiting Screen) */
+.game-settings-display {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    margin-top: 15px;
+}
+
+.game-settings-display h3 {
+    font-family: var(--font-rounded);
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.settings-summary {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+.settings-summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.settings-summary-item:last-child {
+    border-bottom: none;
+}
+
+.settings-summary-label {
+    font-weight: 600;
+}
+
+.settings-summary-value {
+    color: var(--primary-color);
+}
+
+/* Game Settings Modal Styles */
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.setting-item {
+    margin-bottom: 15px;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.number-input {
+    width: 80px;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.special-card-config {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.card-config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.card-config-item label {
+    flex: 1;
+    margin: 0;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.card-config-item input {
+    margin-left: 10px;
+}
+
+/* === Game Settings Display === */
+
+.game-settings-display {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-top: 15px;
+}
+
+.game-settings-display h4 {
+    font-family: var(--font-rounded);
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.settings-info {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-label {
+    font-weight: 600;
+    color: #555;
+}
+
+.setting-value {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.special-card-counts {
+    margin-top: 8px;
+    padding-left: 15px;
+}
+
+.special-card-count-item {
+    font-size: 0.85rem;
+    color: #666;
+    padding: 2px 0;
+}
+
+/* === Special Card Settings (Lobby) === */
+
+.special-card-settings {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.special-card-settings h4 {
+    font-family: var(--font-rounded);
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.setting-row {
+    margin-bottom: 10px;
+}
+
+.setting-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.setting-row input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.special-card-config {
+    margin-top: 10px;
+    transition: all 0.3s;
+}
+
+.card-type-settings {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.card-type-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background: white;
+    border-radius: 5px;
+    font-size: 0.85rem;
+}
+
+.card-type-item label {
+    font-weight: 600;
+    color: #555;
+}
+
+.card-type-item input[type="number"] {
+    width: 50px;
+    padding: 4px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .card-type-settings {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === PC Layout for Special Cards (Desktop only) === */
+
+@media (min-width: 1024px) {
+
+    /* Wider container */
+    .app-container {
+        max-width: 1200px !important;
+    }
+
+    /* Game screen: use CSS Grid */
+    #game-screen.active {
+        display: grid;
+        grid-template-columns: 220px 1fr 180px;
+        grid-template-rows: auto auto auto auto;
+        gap: 20px;
+        grid-template-areas:
+            "header header header"
+            "gameinfo gameinfo gameinfo"
+            "special play buttons"
+            "special hand buttons";
+    }
+
+    /* Header takes full width at top */
+    #game-screen.active header {
+        grid-area: header;
+    }
+
+    /* Game info also full width */
+    #game-screen.active .game-info {
+        grid-area: gameinfo;
+    }
+
+    /* Special cards on the left */
+    #game-screen.active .special-cards-container {
+        grid-area: special;
+    }
+
+    .special-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .special-card {
+        width: 100%;
+        height: auto;
+        min-height: unset;
+    }
+
+    /* Play area */
+    #game-screen.active .play-area {
+        grid-area: play;
+        max-width: 700px;
+    }
+
+    /* Hand container */
+    #game-screen.active .hand-container {
+        grid-area: hand;
+        max-width: 700px;
+    }
+
+    /* Voting modal */
+    #game-screen.active .voting-modal {
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* Special card name badge on current word */
+.special-card-badge {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    z-index: 1;
+    animation: badge-appear 0.3s ease-out;
+}
+
+@keyframes badge-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Relative positioning for current-word-container */
+.current-word-container {
+    position: relative;
+}
+
+/* === PC Layout: Header buttons in right column === */
+
+@media (min-width: 1024px) {
+
+    /* Move header buttons to right grid area */
+    #game-screen.active .header-buttons {
+        grid-area: buttons;
+        display: flex !important;
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+        position: static !important;
+    }
+
+    /* Keep disconnect button in header */
+    #game-screen.active #disconnect-game-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        grid-area: unset;
+    }
+
+    /* Move other buttons to grid column */
+    #game-screen.active #reroll-btn,
+    #game-screen.active #oppose-btn,
+    #game-screen.active #approve-btn {
+        width: 100%;
+        margin: 0;
+    }
+}

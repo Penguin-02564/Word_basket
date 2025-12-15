@@ -34,6 +34,10 @@ const els = {
     approveBtn: document.getElementById('approve-btn'),
     menuBtn: document.getElementById('menu-btn'),
 
+    // Special Cards
+    specialCards: document.getElementById('special-cards'),
+    specialCardsCount: document.getElementById('special-cards-count'),
+
     // Voting Modal
     votingModal: document.getElementById('voting-modal'),
     votingWord: document.getElementById('voting-word'),
@@ -44,6 +48,11 @@ const els = {
 
     // Modal
     settingsModal: document.getElementById('settings-modal'),
+    playerSelectionModal: document.getElementById('player-selection-modal'),
+    playerSelectionList: document.getElementById('player-selection-list'),
+    confirmPlayerSelectionBtn: document.getElementById('confirm-player-selection-btn'),
+    cancelPlayerSelectionBtn: document.getElementById('cancel-player-selection-btn'),
+    closePlayerSelectionBtn: document.getElementById('close-player-selection'),
 
     // Disconnect buttons
     disconnectWaitingBtn: document.getElementById('disconnect-waiting-btn'),
@@ -72,7 +81,11 @@ let state = {
     cardPriority: ['char', 'row', 'length'],
     reconnectTimer: null,
     finishingCountdown: null, // Timer for countdown display
-    isOpposing: false // Toggle state for opposition
+    isOpposing: false, // Toggle state for opposition
+    // Special Cards
+    specialCards: [],
+    pendingSpecialCard: null,
+    selectedPlayerForSwap: null
 };
 
 // --- Initialization ---
@@ -349,6 +362,9 @@ function updateGameState(data) {
     state.playerId = data.my_player_id;
     state.isHost = data.is_host;
     state.hand = data.my_hand || [];
+    // 特殊カード情報を更新
+    state.specialCards = data.my_special_cards || [];
+    state.pendingSpecialCard = data.my_pending_special_card || null;
 
     // Save player ID for reconnection
     if (state.playerId) {
@@ -370,6 +386,11 @@ function updateGameState(data) {
         showScreen('waiting-screen');
         renderPlayersList(data.players_info);
 
+        // 待機画面で設定を表示
+        if (data.game_settings) {
+            renderGameSettings(data.game_settings);
+        }
+
         if (state.isHost) {
             els.startGameBtn.classList.remove('hidden');
             els.waitingMessage.classList.add('hidden');
@@ -380,6 +401,9 @@ function updateGameState(data) {
     }
     // Update Game Screen
     else if (data.status === 'playing' || data.status === 'finished' || data.status === 'finishing_check') {
+        // プレイヤー情報を保存（セレクトスワップ用）
+        updatePlayersList(data.players_info);
+
         if (!document.getElementById('game-screen').classList.contains('active')) {
             showScreen('game-screen');
         }
@@ -392,6 +416,7 @@ function updateGameState(data) {
         els.handCount.textContent = state.hand.length;
 
         renderHand();
+        renderSpecialCards();
         renderOpponents(data.players_info);
 
         if (data.message) {
@@ -754,6 +779,47 @@ function saveSettings() {
 }
 
 function loadPlayerState() {
+    // First check URL parameters (for /game?room=X&name=Y)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomFromUrl = urlParams.get('room');
+    const nameFromUrl = urlParams.get('name');
+
+    if (roomFromUrl && nameFromUrl) {
+        // URL parameters take priority
+        state.roomCode = roomFromUrl;
+        state.playerName = decodeURIComponent(nameFromUrl);
+
+        // Check sessionStorage for other info
+        const savedId = sessionStorage.getItem('playerId');
+        const isHost = sessionStorage.getItem('isHost') === 'true';
+
+        if (savedId) {
+            state.playerId = savedId;
+        }
+        state.isHost = isHost;
+
+        console.log("Found URL parameters, connecting to room:", state.roomCode);
+        connectWebSocket();
+        return;
+    }
+
+    // Check sessionStorage (set by home.js)
+    const sessionId = sessionStorage.getItem('playerId');
+    const sessionRoom = sessionStorage.getItem('roomCode');
+    const sessionName = sessionStorage.getItem('playerName');
+
+    if (sessionId && sessionRoom && sessionName) {
+        state.playerId = sessionId;
+        state.roomCode = sessionRoom;
+        state.playerName = sessionName;
+        state.isHost = sessionStorage.getItem('isHost') === 'true';
+
+        console.log("Found sessionStorage, attempting reconnect...");
+        connectWebSocket();
+        return;
+    }
+
+    // Fall back to localStorage (for reconnection)
     const savedId = localStorage.getItem('playerId');
     const savedRoom = localStorage.getItem('roomCode');
     const savedName = localStorage.getItem('playerName');
@@ -763,13 +829,7 @@ function loadPlayerState() {
         state.roomCode = savedRoom;
         state.playerName = savedName;
 
-        // Auto-join if we have saved state
-        // But maybe user wants to start fresh?
-        // Let's just pre-fill the inputs or auto-connect?
-        // For "reconnection", auto-connect is better.
-        // But if the game is over, we shouldn't.
-        // Let's try to connect. If room doesn't exist, it will fail and clear state.
-        console.log("Found saved session, attempting reconnect...");
+        console.log("Found localStorage, attempting reconnect...");
         connectWebSocket();
     }
 }
@@ -909,5 +969,196 @@ function clearAutoSelection() {
     cards.forEach(c => c.classList.remove('auto-selected'));
 }
 
+// === Special Cards Functions ===
+
+function renderSpecialCards() {
+    els.specialCards.innerHTML = '';
+
+    const totalSpecialCards = state.specialCards.length;
+    els.specialCardsCount.textContent = `${totalSpecialCards}`;
+
+    if (totalSpecialCards === 0) {
+        return;
+    }
+
+    state.specialCards.forEach((card, index) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'special-card';
+
+        if (state.pendingSpecialCard && state.pendingSpecialCard.card_type === card.card_type) {
+            cardEl.classList.add('pending');
+        }
+
+        cardEl.innerHTML = `
+            <div class="special-card-name">${card.name}</div>
+            <div class="special-card-description">${card.description}</div>
+            ${state.pendingSpecialCard && state.pendingSpecialCard.card_type === card.card_type ? '<div class="pending-badge">待機中</div>' : ''}
+        `;
+
+        cardEl.addEventListener('click', () => selectSpecialCard(index, card));
+        els.specialCards.appendChild(cardEl);
+    });
+}
+
+function selectSpecialCard(index, card) {
+    if (card.card_type === 'select_swap') {
+        showPlayerSelectionModal();
+    } else {
+        sendSetSpecialCardPending(index);
+    }
+}
+
+function sendSetSpecialCardPending(cardIndex) {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({
+            action: "set_special_card_pending",
+            card_index: cardIndex
+        }));
+    }
+}
+
+function showPlayerSelectionModal() {
+    els.playerSelectionModal.classList.add('active');
+    els.playerSelectionList.innerHTML = '';
+
+    if (window.currentGamePlayers) {
+        window.currentGamePlayers.forEach(player => {
+            if (player.player_id !== state.playerId && !player.rank) {
+                const playerItem = document.createElement('div');
+                playerItem.className = 'player-selection-item';
+                playerItem.innerHTML = `
+                    <label>
+                        <input type="radio" name="swap_target" value="${player.player_id}">
+                        ${player.name} (手札${player.hand_count}枚)
+                    </label>
+                `;
+                els.playerSelectionList.appendChild(playerItem);
+            }
+        });
+    }
+}
+
+function closePlayerSelectionModal() {
+    els.playerSelectionModal.classList.remove('active');
+    state.selectedPlayerForSwap = null;
+}
+
+function updatePlayersList(players) {
+    window.currentGamePlayers = players;
+}
+
+function initSpecialCardsListeners() {
+    if (els.closePlayerSelectionBtn) {
+        els.closePlayerSelectionBtn.addEventListener('click', closePlayerSelectionModal);
+    }
+    if (els.cancelPlayerSelectionBtn) {
+        els.cancelPlayerSelectionBtn.addEventListener('click', closePlayerSelectionModal);
+    }
+    if (els.confirmPlayerSelectionBtn) {
+        els.confirmPlayerSelectionBtn.addEventListener('click', () => {
+            const selectedRadio = document.querySelector('input[name="swap_target"]:checked');
+            if (selectedRadio) {
+                sendExecuteSelectSwap(selectedRadio.value);
+                closePlayerSelectionModal();
+            } else {
+                alert('交換相手を選択してください');
+            }
+        });
+    }
+    if (els.playerSelectionModal) {
+        els.playerSelectionModal.addEventListener('click', (e) => {
+            if (e.target === els.playerSelectionModal) closePlayerSelectionModal();
+        });
+    }
+}
+
+function sendExecuteSelectSwap(targetPlayerId) {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({
+            action: "execute_select_swap",
+            target_player_id: targetPlayerId
+        }));
+    }
+}
+
 // Start
 init();
+initSpecialCardsListeners();
+
+// === Game Settings Display Functions ===
+
+function renderGameSettings(settings) {
+    const settingsInfo = document.getElementById('settings-info');
+    if (!settingsInfo) return;
+
+    const specialCardsEnabled = settings.special_cards_enabled || {};
+    const numPerPlayer = settings.num_special_cards_per_player || 0;
+
+    let html = '';
+
+    // 特殊カード機能の有効/無効
+    const totalSpecialCards = Object.values(specialCardsEnabled).reduce((sum, count) => sum + count, 0);
+    const isEnabled = totalSpecialCards > 0 && numPerPlayer > 0;
+
+    html += `<div class="setting-item">
+        <span class="setting-label">特殊カード機能</span>
+        <span class="setting-value">${isEnabled ? '有効' : '無効'}</span>
+    </div>`;
+
+    if (isEnabled) {
+        html += `<div class="setting-item">
+            <span class="setting-label">プレイヤーあたりの枚数</span>
+            <span class="setting-value">${numPerPlayer}枚</span>
+        </div>`;
+
+        html += `<div class="setting-item">
+            <span class="setting-label">特殊カードの種類</span>
+            <span class="setting-value"></span>
+        </div>`;
+
+        html += '<div class="special-card-counts">';
+
+        const cardNames = {
+            'draw2': 'ドロー2',
+            'draw3': 'ドロー3',
+            'dual_word': 'デュアルワード',
+            'no_penalty': 'ノーペナルティ',
+            'rotate_swap': 'ローテートスワップ',
+            'select_swap': 'セレクトスワップ'
+        };
+
+        for (const [type, count] of Object.entries(specialCardsEnabled)) {
+            if (count > 0) {
+                const name = cardNames[type] || type;
+                html += `<div class="special-card-count-item">${name}: ${count}枚</div>`;
+            }
+        }
+
+        html += '</div>';
+    }
+
+    settingsInfo.innerHTML = html;
+}
+
+// === Special Card Badge Display ===
+
+function updateSpecialCardBadge(specialCardUsed) {
+    const badge = document.getElementById('special-card-badge');
+    if (!badge) return;
+    
+    if (specialCardUsed) {
+        const cardNames = {
+            'draw2': 'ドロー2',
+            'draw3': 'ドロー3',
+            'dual_word': 'デュアルワード',
+            'no_penalty': 'ノーペナルティ',
+            'rotate_swap': 'ローテートスワップ',
+            'select_swap': 'セレクトスワップ'
+        };
+        
+        badge.textContent = cardNames[specialCardUsed] || specialCardUsed;
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}

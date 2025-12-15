@@ -17,6 +17,22 @@ class Card:
             "display": self.display
         }
 
+class SpecialCard:
+    """特殊カードクラス"""
+    def __init__(self, card_type: str, name: str, description: str):
+        self.card_type = card_type  # "draw2", "draw3", "dual_word", "no_penalty", "rotate_swap", "select_swap"
+        self.name = name
+        self.description = description
+        self.is_pending = False  # 待機状態かどうか
+    
+    def to_dict(self):
+        return {
+            "card_type": self.card_type,
+            "name": self.name,
+            "description": self.description,
+            "is_pending": self.is_pending
+        }
+
 class Player:
     def __init__(self, player_id: str, name: str, is_host: bool = False):
         self.player_id = player_id
@@ -25,6 +41,9 @@ class Player:
         self.is_host = is_host
         self.card_priority: List[str] = ['char', 'row', 'length']
         self.rank: Optional[int] = None
+        # 特殊カード関連
+        self.special_cards: List[SpecialCard] = []
+        self.pending_special_card: Optional[SpecialCard] = None
 
     def to_dict(self):
         return {
@@ -32,7 +51,9 @@ class Player:
             "name": self.name,
             "hand_count": len(self.hand),
             "is_host": self.is_host,
-            "rank": self.rank
+            "rank": self.rank,
+            "special_cards": [sc.to_dict() for sc in self.special_cards],
+            "pending_special_card": self.pending_special_card.to_dict() if self.pending_special_card else None
         }
 
 class WordBasketGame:
@@ -48,6 +69,21 @@ class WordBasketGame:
         self.opposition_votes: Set[str] = set()
         self.approval_votes: Set[str] = set()  # For game end approval
         self.pending_revert_state: Optional[dict] = None
+        
+        # 特殊カード関連
+        self.special_deck: List[SpecialCard] = []
+        self.game_settings: Dict = {
+            "initial_hand_size": 7,
+            "num_special_cards_per_player": 2,
+            "special_cards_enabled": {
+                "draw2": 3,
+                "draw3": 2,
+                "dual_word": 3,
+                "no_penalty": 6,
+                "rotate_swap": 7,
+                "select_swap": 4
+            }
+        }
 
         
         if dictionary_path is None:
@@ -121,6 +157,32 @@ class WordBasketGame:
             for _ in range(2):  # Changed from 3 to 2
                 self.deck.append(Card("length", val, display))
 
+    def initialize_special_deck(self):
+        """特殊カード専用の山札（裏山札）を初期化"""
+        self.special_deck = []
+        
+        # 特殊カードの定義
+        special_card_definitions = {
+            "draw2": ("ドロー2", "7文字以上の単語を出した時、他プレイヤーにカードを2枚ドローさせる"),
+            "draw3": ("ドロー3", "10文字以上の単語を出した時、他プレイヤーにカードを3枚ドローさせる"),
+            "dual_word": ("デュアルワード", "2文字の単語も出せるようになる"),
+            "no_penalty": ("ノーペナルティ", "手札交換時のペナルティ（+1枚）を免除"),
+            "rotate_swap": ("ローテートスワップ", "全プレイヤーの手札を時計回りに入れ替え（即時発動）"),
+            "select_swap": ("セレクトスワップ", "特定のプレイヤーと手札を交換")
+        }
+        
+        # game_settingsに基づいて特殊カードを生成
+        enabled_cards = self.game_settings.get("special_cards_enabled", {})
+        for card_type, count in enabled_cards.items():
+            if card_type in special_card_definitions and count > 0:
+                name, description = special_card_definitions[card_type]
+                for _ in range(count):
+                    self.special_deck.append(SpecialCard(card_type, name, description))
+        
+        # シャッフル
+        random.shuffle(self.special_deck)
+
+
 
     def add_player(self, player_id: str, name: str) -> Player:
         is_host = len(self.players) == 0
@@ -140,9 +202,23 @@ class WordBasketGame:
         self.initialize_deck()
         random.shuffle(self.deck)
         
+        # 特殊カードを初期化
+        self.initialize_special_deck()
+        
         # Distribute cards
+        initial_hand_size = self.game_settings.get("initial_hand_size", 7)
         for player in self.players.values():
-            player.hand = [self.deck.pop() for _ in range(7)]
+            player.hand = [self.deck.pop() for _ in range(initial_hand_size)]
+            # 特殊カードを配布
+            player.special_cards = []
+            player.pending_special_card = None
+        
+        # 特殊カードを配布
+        num_special_cards = self.game_settings.get("num_special_cards_per_player", 2)
+        for player in self.players.values():
+            for _ in range(min(num_special_cards, len(self.special_deck))):
+                if self.special_deck:
+                    player.special_cards.append(self.special_deck.pop())
         
         
         
@@ -278,7 +354,12 @@ class WordBasketGame:
         if word.endswith("ん"):
             return {"valid": False, "message": "「ん」で終わる単語は使えません"}
 
+        # 特殊カードによる最小文字数の調整（デュアルワード）
+        has_dual_word = player.pending_special_card and player.pending_special_card.card_type == "dual_word"
         min_length = 4 if len(player.hand) == 1 else 3
+        if has_dual_word:
+            min_length = 2  # デュアルワードカードがあれば2文字でOK
+        
         if len(word) < min_length:
             return {"valid": False, "message": f"{min_length}文字以上の単語にしてください"}
 
@@ -330,6 +411,42 @@ class WordBasketGame:
             self.discard_pile.append(played_card)
             
             self.current_word = word
+            
+            # 特殊カードの効果を発動
+            special_card_effect = None
+            if player.pending_special_card:
+                sc = player.pending_special_card
+                
+                # デュアルワード（すでに最小文字数チェックで使用済み）
+                if sc.card_type == "dual_word":
+                    special_card_effect = {"type": "dual_word", "message": "デュアルワードカードを使用しました"}
+                    # カードを削除
+                    player.special_cards = [c for c in player.special_cards if c != sc]
+                    player.pending_special_card = None
+                
+                # ドロー2（7文字以上で発動）
+                elif sc.card_type == "draw2" and len(word) >= 7:
+                    result = self._execute_draw_cards(player_id, 2, len(word))
+                    if result["success"]:
+                        special_card_effect = {"type": "draw2", "message": result["message"], "affected_players": result.get("affected_players", [])}
+                        # カードを削除
+                        player.special_cards = [c for c in player.special_cards if c != sc]
+                        player.pending_special_card = None
+                
+                # ドロー3（10文字以上で発動）
+                elif sc.card_type == "draw3" and len(word) >= 10:
+                    result = self._execute_draw_cards(player_id, 3, len(word))
+                    if result["success"]:
+                        special_card_effect = {"type": "draw3", "message": result["message"], "affected_players": result.get("affected_players", [])}
+                        # カードを削除
+                        player.special_cards = [c for c in player.special_cards if c != sc]
+                        player.pending_special_card = None
+                
+                # 条件を満たさない場合は待機状態を維持
+                elif sc.card_type in ["draw2", "draw3"]:
+                    # ドローカードは条件を満たさなかったので待機状態を解除
+                    sc.is_pending = False
+                    player.pending_special_card = None
             
             # Store revert state
             self.pending_revert_state = {
@@ -678,8 +795,16 @@ class WordBasketGame:
 
         self.current_word = "リロード_" + new_target_char
 
-        # 3. Calculate cards to draw
-        num_to_draw = original_hand_size + 1
+        # 3. Calculate cards to draw（特殊カードの効果を考慮）
+        has_no_penalty = player.pending_special_card and player.pending_special_card.card_type == "no_penalty"
+        if has_no_penalty:
+            num_to_draw = original_hand_size  # ペナルティなし
+            # カードを削除
+            sc = player.pending_special_card
+            player.special_cards = [c for c in player.special_cards if c != sc]
+            player.pending_special_card = None
+        else:
+            num_to_draw = original_hand_size + 1  # 通常は+1枚
         
         # 4. Reshuffle if needed BEFORE adding cards to discard pile
         if len(self.deck) < num_to_draw and len(self.discard_pile) > 1:
@@ -696,7 +821,8 @@ class WordBasketGame:
         
         player.hand = [self.deck.pop() for _ in range(num_to_draw)]
         
-        return {"success": True, "message": f"手札を交換しました（{num_to_draw}枚）"}
+        penalty_message = "" if has_no_penalty else f"（+1枚ペナルティ）"
+        return {"success": True, "message": f"手札を交換しました（{num_to_draw}枚{penalty_message}）"}
     
     def _reshuffle_if_needed(self):
         """場の札をシャッフルして山札に追加（一番上のカードは残す）"""
@@ -769,18 +895,183 @@ class WordBasketGame:
         self.approval_votes = set()
         self.pending_revert_state = None
         self.rematch_votes = set()
+    
+    # === 特殊カード関連メソッド ===
+    
+    def set_special_card_pending(self, player_id: str, card_index: int) -> dict:
+        """特殊カードを待機状態にする（即時発動のカードはその場で発動）"""
+        if self.status not in ["playing", "finishing_check"]:
+            return {"success": False, "message": "ゲーム中ではありません"}
+        
+        player = self.players.get(player_id)
+        if not player:
+            return {"success": False, "message": "プレイヤーが見つかりません"}
+        
+        if not (0 <= card_index < len(player.special_cards)):
+            return {"success": False, "message": "無効な特殊カードです"}
+        
+        special_card = player.special_cards[card_index]
+        
+        # 即時発動カード（rotate_swap）の処理
+        if special_card.card_type == "rotate_swap":
+            # 即座に発動
+            result = self._execute_rotate_swap(player_id)
+            if result["success"]:
+                # カードを使用済みとして削除
+                player.special_cards.pop(card_index)
+            return result
+        
+        # それ以外のカードは待機状態に設定
+        if player.pending_special_card:
+            # すでに待機中のカードがある場合、解除して新しいカードを設定
+            player.pending_special_card.is_pending = False
+        
+        special_card.is_pending = True
+        player.pending_special_card = special_card
+        
+        return {
+            "success": True, 
+            "message": f"{special_card.name}を待機状態にしました",
+            "immediate": False
+        }
+    
+    def cancel_pending_special_card(self, player_id: str) -> dict:
+        """待機中の特殊カードをキャンセル"""
+        player = self.players.get(player_id)
+        if not player:
+            return {"success": False, "message": "プレイヤーが見つかりません"}
+        
+        if not player.pending_special_card:
+            return {"success": False, "message": "待機中の特殊カードがありません"}
+        
+        player.pending_special_card.is_pending = False
+        player.pending_special_card = None
+        
+        return {"success": True, "message": "特殊カードの待機をキャンセルしました"}
+    
+    # === 各特殊カードの効果実装 ===
+    
+    def _execute_draw_cards(self, player_id: str, num_cards: int, word_length: int) -> dict:
+        """ドロー2/ドロー3の効果（他のプレイヤーにカードをドローさせる）"""
+        player = self.players.get(player_id)
+        if not player:
+            return {"success": False, "message": "プレイヤーが見つかりません"}
+        
+        # 他のプレイヤー全員にカードをドローさせる
+        affected_players = []
+        for pid, p in self.players.items():
+            if pid != player_id and p.rank is None:  # 自分以外の現役プレイヤー
+                cards_drawn = 0
+                for _ in range(num_cards):
+                    if self.deck:
+                        p.hand.append(self.deck.pop())
+                        cards_drawn += 1
+                    elif len(self.discard_pile) > 1:
+                        self._reshuffle_if_needed()
+                        if self.deck:
+                            p.hand.append(self.deck.pop())
+                            cards_drawn += 1
+                
+                if cards_drawn > 0:
+                    affected_players.append({"player_id": pid, "name": p.name, "cards_drawn": cards_drawn})
+        
+        return {
+            "success": True,
+            "message": f"他のプレイヤーに{num_cards}枚ドローさせました",
+            "affected_players": affected_players
+        }
+    
+    def _execute_rotate_swap(self, player_id: str) -> dict:
+        """ローテートスワップの効果（手札を時計回りに回転）"""
+        if len(self.players) < 2:
+            return {"success": False, "message": "プレイヤーが2人以上必要です"}
+        
+        # プレイヤーリストを順序付け（player_idでソートして一貫性を保つ）
+        player_ids = sorted(self.players.keys())
+        player_hands = [self.players[pid].hand for pid in player_ids]
+        
+        # 手札を時計回りに回転（最後のプレイヤーの手札が最初のプレイヤーに）
+        rotated_hands = [player_hands[-1]] + player_hands[:-1]
+        
+        # 手札を割り当て直す
+        for i, pid in enumerate(player_ids):
+            self.players[pid].hand = rotated_hands[i]
+        
+        return {
+            "success": True,
+            "message": "手札を時計回りに入れ替えました",
+            "immediate": True
+        }
+    
+    def execute_select_swap(self, player_id: str, target_player_id: str) -> dict:
+        """セレクトスワップの効果（特定のプレイヤーと手札を交換）"""
+        player = self.players.get(player_id)
+        target = self.players.get(target_player_id)
+        
+        if not player:
+            return {"success": False, "message": "プレイヤーが見つかりません"}
+        
+        if not target:
+            return {"success": False, "message": "対象プレイヤーが見つかりません"}
+        
+        if player_id == target_player_id:
+            return {"success": False, "message": "自分自身とは交換できません"}
+        
+        # 手札を交換
+        player.hand, target.hand = target.hand, player.hand
+        
+        # 使用済みの特殊カードを削除
+        if player.pending_special_card and player.pending_special_card.card_type == "select_swap":
+            player.special_cards = [sc for sc in player.special_cards if sc != player.pending_special_card]
+            player.pending_special_card.is_pending = False
+            player.pending_special_card = None
+        
+        return {
+            "success": True,
+            "message": f"{target.name}と手札を交換しました",
+            "target_player": target.name
+        }
+
 
 class GameManager:
     def __init__(self):
-        self.rooms: Dict[str, WordBasketGame] = {}
+        self.games: Dict[str, WordBasketGame] = {}
 
-    def create_room(self) -> str:
+    def _generate_room_code(self) -> str:
+        """Generate a unique 4-digit room code."""
         room_code = str(random.randint(1000, 9999))
-        while room_code in self.rooms:
+        while room_code in self.games:
             room_code = str(random.randint(1000, 9999))
+        return room_code
+
+    def create_room(self, custom_settings: dict = None) -> str:
+        """
+        Create a new game room with optional custom settings
+        custom_settings format:
+        {
+            "initial_hand_size": 7,
+            "num_special_cards_per_player": 2,
+            "special_cards_enabled": {
+                "draw2": 3,
+                "draw3": 2,
+                ...
+            }
+        }
+        """
+        room_code = self._generate_room_code()
+        game = WordBasketGame(room_code)
         
-        self.rooms[room_code] = WordBasketGame(room_code)
+        # Apply custom settings if provided
+        if custom_settings:
+            if "initial_hand_size" in custom_settings:
+                game.game_settings["initial_hand_size"] = custom_settings["initial_hand_size"]
+            if "num_special_cards_per_player" in custom_settings:
+                game.game_settings["num_special_cards_per_player"] = custom_settings["num_special_cards_per_player"]
+            if "special_cards_enabled" in custom_settings:
+                game.game_settings["special_cards_enabled"] = custom_settings["special_cards_enabled"]
+        
+        self.games[room_code] = game
         return room_code
 
     def get_room(self, room_code: str) -> Optional[WordBasketGame]:
-        return self.rooms.get(room_code)
+        return self.games.get(room_code)
